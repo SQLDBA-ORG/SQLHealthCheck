@@ -1,0 +1,252 @@
+<Window x:Class="SqlMonitorUI.LiveMonitoringWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Live Performance Monitor" 
+        Height="900" 
+        Width="1400"
+        WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
+        Background="#F5F5F5">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#1E1E1E" Padding="15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel>
+                    <TextBlock Text="Live Performance Monitor" FontSize="20" FontWeight="SemiBold" Foreground="White"/>
+                    <TextBlock x:Name="ServerNameText" Text="Not connected" FontSize="12" Foreground="#888888"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="Refresh:" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <ComboBox x:Name="RefreshIntervalCombo" Width="80" SelectedIndex="1" SelectionChanged="RefreshIntervalCombo_SelectionChanged">
+                        <ComboBoxItem Content="1 sec"/>
+                        <ComboBoxItem Content="5 sec"/>
+                        <ComboBoxItem Content="10 sec"/>
+                        <ComboBoxItem Content="30 sec"/>
+                    </ComboBox>
+                    <Button x:Name="StartStopButton" Content="▶ Start" Click="StartStopButton_Click" 
+                            Margin="15,0,0,0" Padding="15,8" Background="#107C10" Foreground="White" 
+                            BorderThickness="0" FontWeight="SemiBold" Cursor="Hand"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Key Metrics Cards -->
+        <Grid Grid.Row="1" Margin="15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="White" CornerRadius="4" Padding="15" Margin="0,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="CPU %" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="CpuText" Text="0" FontSize="28" FontWeight="Bold" Foreground="#0078D4"/>
+                </StackPanel>
+            </Border>
+            
+            <Border Grid.Column="1" Background="White" CornerRadius="4" Padding="15" Margin="5,0">
+                <StackPanel>
+                    <TextBlock Text="Batch Req/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="BatchReqText" Text="0" FontSize="28" FontWeight="Bold" Foreground="#107C10"/>
+                </StackPanel>
+            </Border>
+            
+            <Border Grid.Column="2" Background="White" CornerRadius="4" Padding="15" Margin="5,0">
+                <StackPanel>
+                    <TextBlock Text="Transactions/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="TransText" Text="0" FontSize="28" FontWeight="Bold" Foreground="#FF8C00"/>
+                </StackPanel>
+            </Border>
+            
+            <Border Grid.Column="3" Background="White" CornerRadius="4" Padding="15" Margin="5,0">
+                <StackPanel>
+                    <TextBlock Text="Compilations/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="CompilationsText" Text="0" FontSize="28" FontWeight="Bold" Foreground="#6B69D6"/>
+                </StackPanel>
+            </Border>
+            
+            <Border Grid.Column="4" Background="White" CornerRadius="4" Padding="15" Margin="5,0">
+                <StackPanel>
+                    <TextBlock Text="Page Reads" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="ReadsText" Text="0" FontSize="28" FontWeight="Bold" Foreground="#D83B01"/>
+                </StackPanel>
+            </Border>
+            
+            <Border Grid.Column="5" Background="White" CornerRadius="4" Padding="15" Margin="5,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="Page Writes" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="WritesText" Text="0" FontSize="28" FontWeight="Bold" Foreground="#8B008B"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="2" Margin="15,0,15,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Wait Stats + Rolling Graph -->
+            <Grid Grid.Column="0" Margin="0,0,7,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="180"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Wait Stats Table -->
+                <Border Grid.Row="0" Background="White" CornerRadius="4" Padding="15" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="150"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Text="Wait Statistics" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        
+                        <DataGrid x:Name="WaitStatsGrid" Grid.Row="1" 
+                                  AutoGenerateColumns="False" 
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  BorderThickness="0"
+                                  RowHeight="28"
+                                  VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="" Width="20">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Rectangle Width="12" Height="12" Fill="{Binding Color}" RadiusX="2" RadiusY="2"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Wait Type" Binding="{Binding WaitType}" Width="*"/>
+                                <DataGridTextColumn Header="Wait (ms)" Binding="{Binding WaitTimeMs, StringFormat=N0}" Width="90"/>
+                                <DataGridTemplateColumn Header="%" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <ProgressBar Value="{Binding Percentage}" Maximum="100" Height="16" Background="#E0E0E0" Foreground="{Binding Color}"/>
+                                                <TextBlock Text="{Binding Percentage, StringFormat={}{0:F1}%}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="9"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <!-- Rolling Graph -->
+                <Border Grid.Row="1" Background="White" CornerRadius="4" Padding="15" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Text="Wait Stats History (120 samples)" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <Canvas x:Name="WaitGraphCanvas" Grid.Row="1" Background="#FAFAFA" ClipToBounds="True"/>
+                    </Grid>
+                </Border>
+
+                <!-- Legend -->
+                <Border Grid.Row="2" Background="White" CornerRadius="4" Padding="10">
+                    <WrapPanel x:Name="LegendPanel" Orientation="Horizontal"/>
+                </Border>
+            </Grid>
+
+            <!-- Right: Sessions Grid + SPID Boxes -->
+            <Grid Grid.Column="1" Margin="7,0,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Active Sessions Table -->
+                <Border Grid.Row="0" Background="White" CornerRadius="4" Padding="15" Margin="0,0,0,10" MaxHeight="200">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Active Sessions" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="SessionCountText" Text=" (0)" FontSize="16" Foreground="#666"/>
+                        </StackPanel>
+                        
+                        <DataGrid x:Name="SessionsGrid" Grid.Row="1" 
+                                  AutoGenerateColumns="False" 
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  BorderThickness="0"
+                                  RowHeight="26"
+                                  VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="SPID" Binding="{Binding Spid}" Width="50"/>
+                                <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="90"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="70"/>
+                                <DataGridTextColumn Header="CPU" Binding="{Binding Cpu}" Width="50"/>
+                                <DataGridTextColumn Header="I/O" Binding="{Binding PhysicalIo, StringFormat=N0}" Width="60"/>
+                                <DataGridTextColumn Header="Program" Binding="{Binding ProgramName}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <!-- SPID Sparkline Boxes -->
+                <Border Grid.Row="1" Background="White" CornerRadius="4" Padding="15">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Text="Session Activity Sparklines" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        
+                        <!-- Sparkline Legend -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                            <Rectangle Width="20" Height="3" Fill="#0078D4" Margin="0,0,5,0"/>
+                            <TextBlock Text="CPU %" FontSize="11" Foreground="#666" Margin="0,0,15,0"/>
+                            <Rectangle Width="20" Height="3" Fill="#D83B01" Margin="0,0,5,0"/>
+                            <TextBlock Text="I/O %" FontSize="11" Foreground="#666"/>
+                        </StackPanel>
+                        
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <WrapPanel x:Name="SpidBoxesPanel" Orientation="Horizontal"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Background="#E0E0E0" Padding="10,5">
+            <Grid>
+                <TextBlock x:Name="StatusText" Text="Ready" FontSize="11"/>
+                <TextBlock x:Name="LastUpdateText" Text="" FontSize="11" HorizontalAlignment="Right"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

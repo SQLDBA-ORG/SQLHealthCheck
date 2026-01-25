@@ -1,0 +1,235 @@
+<Window x:Class="SqlMonitorUI.SqlQueryEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Edit SQL Query" 
+        Height="800" 
+        Width="1100"
+        WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
+        Background="White">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="250"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Check Info -->
+        <Border Grid.Row="0" 
+                Background="#F5F5F5" 
+                Padding="15" 
+                CornerRadius="4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="5"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" 
+                           Text="Check ID:" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,10,0"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" 
+                           x:Name="CheckIdText" 
+                           Text=""/>
+
+                <TextBlock Grid.Row="0" Grid.Column="2" 
+                           Text="Execution Type:" 
+                           FontWeight="SemiBold" 
+                           Margin="20,0,10,0"/>
+                <ComboBox Grid.Row="0" Grid.Column="3"
+                          x:Name="ExecutionTypeCombo"
+                          Width="150"
+                          HorizontalAlignment="Left">
+                    <ComboBoxItem Content="Binary (0/1)" Tag="Binary"/>
+                    <ComboBoxItem Content="Row Count" Tag="RowCount"/>
+                </ComboBox>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" 
+                           Text="Name:" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,10,0"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3"
+                           x:Name="CheckNameText" 
+                           Text=""/>
+            </Grid>
+        </Border>
+
+        <!-- Instructions -->
+        <Border Grid.Row="2" 
+                Background="#FFF9E6"
+                BorderBrush="#FFE599"
+                BorderThickness="1"
+                Padding="12"
+                CornerRadius="4">
+            <StackPanel>
+                <TextBlock FontWeight="SemiBold" Margin="0,0,0,5">Query Guidelines:</TextBlock>
+                <TextBlock TextWrapping="Wrap" FontSize="11">
+                    <Run Text="• Binary: Must return single row with 0 (pass) or 1 (fail)"/>
+                    <LineBreak/>
+                    <Run Text="• Row Count: Returns count of rows found (0 = pass, >0 = fail)"/>
+                    <LineBreak/>
+                    <Run Text="• Test your query below before saving!"/>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- SQL Editor -->
+        <Border Grid.Row="4" 
+                BorderBrush="#CCCCCC" 
+                BorderThickness="1" 
+                CornerRadius="4">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Editor Header -->
+                <Border Grid.Row="0" 
+                        Background="#0078D4" 
+                        Padding="10,5">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="SQL Query Editor" 
+                                   Foreground="White" 
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        
+                        <Button x:Name="ViewExecutionCodeButton"
+                                Content="📄 View Execution Code"
+                                Click="ViewExecutionCodeButton_Click"
+                                Margin="20,0,0,0"
+                                Padding="8,4"
+                                Background="White"
+                                BorderThickness="0"
+                                FontSize="11"
+                                Cursor="Hand"/>
+                    </StackPanel>
+                </Border>
+                
+                <TextBox Grid.Row="1"
+                         x:Name="SqlQueryTextBox"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         FontFamily="Consolas"
+                         FontSize="12"
+                         Padding="10"
+                         Background="#FAFAFA"/>
+            </Grid>
+        </Border>
+
+        <!-- Test Controls -->
+        <StackPanel Grid.Row="6" Orientation="Horizontal">
+            <Button x:Name="TestQueryButton" 
+                    Content="▶️ Test Query" 
+                    Click="TestQueryButton_Click"
+                    Padding="15,8"
+                    Background="#107C10"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Cursor="Hand"/>
+            
+            <TextBlock x:Name="TestStatusText"
+                       Margin="15,0,0,0"
+                       VerticalAlignment="Center"
+                       FontSize="12"
+                       Foreground="#666666"/>
+        </StackPanel>
+
+        <!-- Test Results Grid -->
+        <Border Grid.Row="8"
+                BorderBrush="#CCCCCC"
+                BorderThickness="1"
+                CornerRadius="4">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <Border Grid.Row="0" Background="#F5F5F5" Padding="10,5">
+                    <TextBlock Text="Test Results" FontWeight="SemiBold"/>
+                </Border>
+                
+                <DataGrid Grid.Row="1"
+                          x:Name="TestResultsGrid"
+                          AutoGenerateColumns="True"
+                          IsReadOnly="True"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Auto"
+                          GridLinesVisibility="All"
+                          AlternatingRowBackground="#F9F9F9"
+                          FontFamily="Consolas"
+                          FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- Bottom Section -->
+        <Grid Grid.Row="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Recommended Action -->
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="Recommended Action:" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <TextBox x:Name="RecommendedActionTextBox"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         Height="60"
+                         Padding="8"
+                         VerticalScrollBarVisibility="Auto"
+                         FontSize="12"/>
+            </StackPanel>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="2" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Right">
+                <Button x:Name="SaveButton" 
+                        Content="💾 Save" 
+                        Click="SaveButton_Click"
+                        Padding="15,10"
+                        Margin="0,0,10,0"
+                        Background="#107C10"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"/>
+                
+                <Button x:Name="CancelButton" 
+                        Content="Cancel" 
+                        Click="CancelButton_Click"
+                        Padding="15,10"
+                        Background="#666666"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontSize="14"
+                        Cursor="Hand"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,164 @@
+<Window x:Class="SqlMonitorUI.ScriptManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Script Manager - Embedded Diagnostic Scripts" 
+        Height="650" 
+        Width="1000"
+        WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
+        Background="#F5F5F5">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Manage Diagnostic Scripts" 
+                       FontSize="22" 
+                       FontWeight="SemiBold" 
+                       Foreground="#333333"/>
+            <TextBlock Text="Configure embedded scripts like sp_Blitz, sp_triage, and custom diagnostic scripts"
+                       FontSize="13"
+                       Foreground="#666666"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <!-- Instructions -->
+        <Border Grid.Row="1" 
+                Background="#FFF3E0" 
+                BorderBrush="#FFB74D" 
+                BorderThickness="1" 
+                CornerRadius="4"
+                Padding="12"
+                Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock FontWeight="SemiBold" Foreground="#E65100">📁 Setup Instructions:</TextBlock>
+                <TextBlock TextWrapping="Wrap" Foreground="#E65100" Margin="0,5,0,0">
+                    1. Create a "scripts" folder in the application directory
+                    2. Copy your diagnostic scripts (sp_Blitz.sql, sp_triage.sql, etc.) into the scripts folder
+                    3. Click "Scan Scripts Folder" to detect and configure scripts
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,15">
+            <Button Content="📂 Scan Scripts Folder"
+                    Click="ScanScriptsButton_Click"
+                    Padding="15,10"
+                    Margin="0,0,10,0"
+                    Background="#0078D4"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="13"
+                    Cursor="Hand"/>
+            
+            <Button Content="➕ Add Script"
+                    Click="AddScriptButton_Click"
+                    Padding="15,10"
+                    Margin="0,0,10,0"
+                    Background="#107C10"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="13"
+                    Cursor="Hand"/>
+            
+            <Button Content="🗑️ Remove Selected"
+                    Click="RemoveScriptButton_Click"
+                    Padding="15,10"
+                    Margin="0,0,10,0"
+                    Background="#D83B01"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="13"
+                    Cursor="Hand"/>
+
+            <Button Content="📁 Open Scripts Folder"
+                    Click="OpenScriptsFolderButton_Click"
+                    Padding="15,10"
+                    Background="#6B69D6"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="13"
+                    Cursor="Hand"/>
+        </StackPanel>
+
+        <!-- Scripts Grid -->
+        <DataGrid Grid.Row="3"
+                  x:Name="ScriptsDataGrid"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  SelectionMode="Single"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column"
+                  AlternatingRowBackground="#F9F9F9"
+                  RowBackground="White"
+                  BorderBrush="#CCCCCC"
+                  BorderThickness="1"
+                  FontSize="12">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="Enabled" 
+                                        Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"
+                                        Width="70"/>
+                <DataGridTextColumn Header="Name" 
+                                    Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" 
+                                    Width="150"/>
+                <DataGridTextColumn Header="Script File" 
+                                    Binding="{Binding ScriptPath}" 
+                                    Width="180"
+                                    IsReadOnly="True"/>
+                <DataGridTextColumn Header="Execution Parameters" 
+                                    Binding="{Binding ExecutionParameters, UpdateSourceTrigger=PropertyChanged}" 
+                                    Width="*"
+                                    MinWidth="200"/>
+                <DataGridTextColumn Header="Order" 
+                                    Binding="{Binding ExecutionOrder, UpdateSourceTrigger=PropertyChanged}" 
+                                    Width="60"/>
+                <DataGridTextColumn Header="Timeout (s)" 
+                                    Binding="{Binding TimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" 
+                                    Width="80"/>
+                <DataGridCheckBoxColumn Header="Export CSV" 
+                                        Binding="{Binding ExportToCsv, UpdateSourceTrigger=PropertyChanged}"
+                                        Width="80"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Bottom Buttons -->
+        <StackPanel Grid.Row="4" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,15,0,0">
+            <TextBlock x:Name="StatusText"
+                       Text=""
+                       VerticalAlignment="Center"
+                       Margin="0,0,20,0"
+                       FontSize="12"
+                       Foreground="#666666"/>
+            
+            <Button Content="💾 Save Configuration"
+                    Click="SaveButton_Click"
+                    Padding="20,12"
+                    Margin="0,0,10,0"
+                    Background="#107C10"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Cursor="Hand"/>
+            <Button Content="Close"
+                    Click="CloseButton_Click"
+                    Padding="20,12"
+                    Background="#666666"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="14"
+                    Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

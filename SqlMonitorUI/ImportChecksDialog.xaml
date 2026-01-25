@@ -1,0 +1,167 @@
+<Window x:Class="SqlMonitorUI.ImportChecksDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Import SQL Health Checks" 
+        Height="400" 
+        Width="600"
+        WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
+        Background="White"
+        ResizeMode="NoResize">
+    
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0" 
+                   Text="Select Scripts to Import" 
+                   FontSize="20" 
+                   FontWeight="SemiBold" 
+                   Foreground="#333333"/>
+
+        <!-- sp_Blitz Section -->
+        <Border Grid.Row="2" 
+                BorderBrush="#CCCCCC" 
+                BorderThickness="1" 
+                Padding="20" 
+                CornerRadius="4">
+            <StackPanel>
+                <CheckBox x:Name="SpBlitzCheckBox" 
+                          Content="Import sp_Blitz Checks (210+ checks)"
+                          FontSize="14"
+                          FontWeight="SemiBold"
+                          IsChecked="True"
+                          Checked="SpBlitzCheckBox_Changed"
+                          Unchecked="SpBlitzCheckBox_Changed"/>
+                
+                <TextBlock Text="Brent Ozar's comprehensive SQL Server health check script"
+                           FontSize="12"
+                           Foreground="#666666"
+                           Margin="25,5,0,10"/>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" 
+                               Text="File:" 
+                               VerticalAlignment="Center"
+                               Margin="25,0,10,0"
+                               FontSize="12"/>
+                    
+                    <TextBox x:Name="SpBlitzPathTextBox" 
+                             Grid.Column="1"
+                             Padding="8"
+                             FontSize="12"
+                             IsReadOnly="True"
+                             Background="#F5F5F5"/>
+                    
+                    <Button x:Name="BrowseSpBlitzButton" 
+                            Grid.Column="2"
+                            Content="Browse..." 
+                            Click="BrowseSpBlitzButton_Click"
+                            Padding="10,8"
+                            Margin="10,0,0,0"
+                            FontSize="12"
+                            Background="#0078D4"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- sp_triage Section -->
+        <Border Grid.Row="4" 
+                BorderBrush="#CCCCCC" 
+                BorderThickness="1" 
+                Padding="20" 
+                CornerRadius="4">
+            <StackPanel>
+                <CheckBox x:Name="SpTriageCheckBox" 
+                          Content="Import sp_triage Checks (35+ categories)"
+                          FontSize="14"
+                          FontWeight="SemiBold"
+                          Checked="SpTriageCheckBox_Changed"
+                          Unchecked="SpTriageCheckBox_Changed"/>
+                
+                <TextBlock Text="Adrian Sullivan's comprehensive SQL Server diagnostic script"
+                           FontSize="12"
+                           Foreground="#666666"
+                           Margin="25,5,0,10"/>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" 
+                               Text="File:" 
+                               VerticalAlignment="Center"
+                               Margin="25,0,10,0"
+                               FontSize="12"/>
+                    
+                    <TextBox x:Name="SpTriagePathTextBox" 
+                             Grid.Column="1"
+                             Padding="8"
+                             FontSize="12"
+                             IsReadOnly="True"
+                             Background="#F5F5F5"/>
+                    
+                    <Button x:Name="BrowseSpTriageButton" 
+                            Grid.Column="2"
+                            Content="Browse..." 
+                            Click="BrowseSpTriageButton_Click"
+                            Padding="10,8"
+                            Margin="10,0,0,0"
+                            FontSize="12"
+                            Background="#0078D4"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="6" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+            <Button x:Name="ImportButton" 
+                    Content="Import Selected" 
+                    Click="ImportButton_Click"
+                    Padding="15,10"
+                    Margin="0,0,10,0"
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Background="#107C10"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    IsEnabled="False"/>
+            
+            <Button x:Name="CancelButton" 
+                    Content="Cancel" 
+                    Click="CancelButton_Click"
+                    Padding="15,10"
+                    FontSize="14"
+                    Background="#666666"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

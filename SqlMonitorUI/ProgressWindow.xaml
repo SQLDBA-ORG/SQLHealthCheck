@@ -1,0 +1,57 @@
+<Window x:Class="SqlMonitorUI.ProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Health Check Progress" 
+        Height="200" 
+        Width="450"
+        
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F5F5F5">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="Running Health Check..."
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#333333"
+                   Margin="0,0,0,15"/>
+
+        <!-- Status Text -->
+        <TextBlock Grid.Row="1"
+                   x:Name="StatusText"
+                   Text="Initializing..."
+                   FontSize="13"
+                   Foreground="#666666"
+                   TextTrimming="CharacterEllipsis"
+                   Margin="0,0,0,10"/>
+
+        <!-- Progress Bar -->
+        <ProgressBar Grid.Row="2"
+                     x:Name="ProgressBar"
+                     Height="25"
+                     Minimum="0"
+                     Maximum="100"
+                     Value="0"
+                     Foreground="#107C10"
+                     Background="#E0E0E0"
+                     Margin="0,0,0,10"/>
+
+        <!-- Percentage -->
+        <TextBlock Grid.Row="3"
+                   x:Name="PercentageText"
+                   Text="0%"
+                   FontSize="14"
+                   FontWeight="SemiBold"
+                   HorizontalAlignment="Center"
+                   Foreground="#333333"/>
+    </Grid>
+</Window>

@@ -1,0 +1,114 @@
+<Window x:Class="SqlMonitorUI.ConnectionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Connect to SQL Server(s)" 
+        Height="650" 
+        Width="550"
+        WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F5F5F5">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Connect to SQL Server(s)" 
+                       FontSize="20" 
+                       FontWeight="SemiBold" 
+                       Foreground="#333333"/>
+            <TextBlock Text="Configure connection settings for health monitoring (supports multiple servers)"
+                       FontSize="12"
+                       Foreground="#666666"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <!-- Connection Settings -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Server Names (Multi-line) -->
+                <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Server Name(s) *" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,5"/>
+                        <TextBox x:Name="ServerTextBox" 
+                                 Padding="10,8" 
+                                 FontSize="13" 
+                                 Text="localhost"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Height="100"/>
+                        <TextBlock Text="Enter one server per line. Examples:&#x0a;  localhost&#x0a;  SERVER01&#x0a;  SERVER01\INSTANCE" 
+                                   FontSize="11" 
+                                   Foreground="#888888" 
+                                   Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Database -->
+                <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Database (Optional)" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,5"/>
+                        <TextBox x:Name="DatabaseTextBox" Padding="10,8" FontSize="13" Text="master"/>
+                        <TextBlock Text="Leave as 'master' for server-level health checks" FontSize="11" Foreground="#888888" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Authentication Type -->
+                <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Authentication" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                        <RadioButton x:Name="WindowsAuthRadio" Content="Windows Authentication (Recommended)" GroupName="AuthType" IsChecked="True" FontSize="13" Margin="0,0,0,5" Checked="AuthType_Changed"/>
+                        <TextBlock Text="Uses your Windows/Active Directory credentials" FontSize="11" Foreground="#888888" Margin="20,0,0,10"/>
+                        <RadioButton x:Name="SqlAuthRadio" Content="SQL Server Authentication" GroupName="AuthType" FontSize="13" Checked="AuthType_Changed"/>
+                        <TextBlock Text="Uses SQL Server login credentials" FontSize="11" Foreground="#888888" Margin="20,0,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- SQL Auth Credentials -->
+                <Border x:Name="SqlAuthPanel" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10" Padding="15" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Text="SQL Server Credentials" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                        <TextBlock Text="Username *" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBox x:Name="UsernameTextBox" Padding="10,8" FontSize="13" Margin="0,0,0,10"/>
+                        <TextBlock Text="Password *" FontSize="12" Margin="0,0,0,3"/>
+                        <PasswordBox x:Name="PasswordBox" Padding="10,8" FontSize="13"/>
+                        <Border Background="#FFF3E0" BorderBrush="#FFB74D" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,10,0,0">
+                            <TextBlock Text="⚠️ Password is not stored - re-enter each session" TextWrapping="Wrap" FontSize="11" Foreground="#E65100"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Security Options -->
+                <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Security Options" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="EncryptCheckBox" Content="Encrypt Connection" IsChecked="True" FontSize="13" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="TrustCertCheckBox" Content="Trust Server Certificate" IsChecked="True" FontSize="13"/>
+                        <TextBlock Text="Enable Trust Server Certificate for self-signed certs" FontSize="11" Foreground="#888888" Margin="20,3,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Execution Options -->
+                <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Execution Options" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="ParallelExecutionCheckBox" Content="Run checks in parallel across servers" IsChecked="True" FontSize="13"/>
+                        <TextBlock Text="Faster execution but uses more resources" FontSize="11" Foreground="#888888" Margin="20,3,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Bottom Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Test Connection(s)" Click="TestButton_Click" Padding="15,12" Margin="0,0,10,0" Background="#6B69D6" Foreground="White" BorderThickness="0" FontSize="13" Cursor="Hand"/>
+            <Button Content="Connect" Click="ConnectButton_Click" Padding="20,12" Margin="0,0,10,0" Background="#107C10" Foreground="White" BorderThickness="0" FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
+            <Button Content="Cancel" Click="CancelButton_Click" Padding="15,12" Background="#666666" Foreground="White" BorderThickness="0" FontSize="13" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>
