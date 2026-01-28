@@ -57,7 +57,7 @@
                     Foreground="White"
                     BorderThickness="0"
                     FontSize="13"
-                    Cursor="Hand"/>
+                    Cursor="Hand" IsEnabled="False"/>
             
             <Button Content="➕ Add Script"
                     Click="AddScriptButton_Click"

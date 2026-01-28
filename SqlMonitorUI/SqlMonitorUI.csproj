@@ -16,6 +16,16 @@
     <SignAssembly>False</SignAssembly>
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <Description>A SQL audit application with basic monitoring capabilities. This application also allows the upload of diagnostic audits to SQLDBA for processing.</Description>
+    <PackageProjectUrl></PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SQLDBA-ORG/SQLHealthCheck</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>Update to use .NET 4.8 for backwards compatability with older SQL servers. 
+Bugfixes on the monitoring scripts.
+Updated forms for modifying checks.
+Live monitoting update to include blocking queries.</PackageReleaseNotes>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
