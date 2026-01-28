@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Script Manager - Embedded Diagnostic Scripts" 
-        Height="650" 
-        Width="1000"
+        Height="700" 
+        Width="1400"
         WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
         Background="#F5F5F5">
     
@@ -42,6 +42,7 @@
                     1. Create a "scripts" folder in the application directory
                     2. Copy your diagnostic scripts (sp_Blitz.sql, sp_triage.sql, etc.) into the scripts folder
                     3. Click "Scan Scripts Folder" to detect and configure scripts
+                    4. Use "SQL Query For Output" to specify a custom query for CSV export (runs after Execution Parameters)
                 </TextBlock>
             </StackPanel>
         </Border>
@@ -105,27 +106,64 @@
             <DataGrid.Columns>
                 <DataGridCheckBoxColumn Header="Enabled" 
                                         Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"
-                                        Width="70"/>
+                                        Width="60"/>
                 <DataGridTextColumn Header="Name" 
                                     Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" 
-                                    Width="150"/>
+                                    Width="120"/>
                 <DataGridTextColumn Header="Script File" 
                                     Binding="{Binding ScriptPath}" 
-                                    Width="180"
+                                    Width="140"
                                     IsReadOnly="True"/>
                 <DataGridTextColumn Header="Execution Parameters" 
                                     Binding="{Binding ExecutionParameters, UpdateSourceTrigger=PropertyChanged}" 
+                                    Width="200"/>
+                <DataGridTextColumn Header="SQL Query For Output (CSV)" 
+                                    Binding="{Binding SqlQueryForOutput, UpdateSourceTrigger=PropertyChanged}" 
                                     Width="*"
-                                    MinWidth="200"/>
+                                    MinWidth="250">
+
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                            <Setter Property="ToolTip" Value="{Binding SqlQueryForOutput}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+
+
+                    <DataGridTextColumn.EditingElementStyle>
+                        <Style TargetType="TextBox">
+                            <Setter Property="TextWrapping" Value="Wrap" />
+                            <Setter Property="AcceptsReturn" Value="true" />
+                        </Style>
+                    </DataGridTextColumn.EditingElementStyle>
+                    
+                    
+                </DataGridTextColumn>
                 <DataGridTextColumn Header="Order" 
                                     Binding="{Binding ExecutionOrder, UpdateSourceTrigger=PropertyChanged}" 
-                                    Width="60"/>
-                <DataGridTextColumn Header="Timeout (s)" 
+                                    Width="50"/>
+                <DataGridTextColumn Header="Timeout" 
                                     Binding="{Binding TimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" 
-                                    Width="80"/>
-                <DataGridCheckBoxColumn Header="Export CSV" 
+                                    Width="60"/>
+                <DataGridCheckBoxColumn Header="CSV" 
                                         Binding="{Binding ExportToCsv, UpdateSourceTrigger=PropertyChanged}"
-                                        Width="80"/>
+                                        Width="45"/>
+                <!-- Edit Query Button
+                <DataGridTemplateColumn Header="SQL Query" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Edit SQL" 
+                      Click="EditSqlScriptButton_Click"
+                      Tag="{Binding}"
+                      Padding="8,4"
+                      Background="#0078D4"
+                      Foreground="White"
+                      BorderThickness="0"
+                      FontSize="11"
+                      Cursor="Hand"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn> -->
             </DataGrid.Columns>
         </DataGrid>
 

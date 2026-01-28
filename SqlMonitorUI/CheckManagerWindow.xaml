@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SQL Check Manager" 
         Height="700" 
-        Width="1200"
+        Width="1613"
         WindowStyle="ToolWindow" WindowStartupLocation="CenterScreen"
         Background="#F5F5F5">
     
@@ -236,9 +236,15 @@
                 <!-- Description -->
                 <DataGridTextColumn Header="Description" 
                                     Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
-                                    Width="*"
-                                    MinWidth="200"/>
-                
+                                    Width="400"
+                                    MinWidth="50"/>
+                <!-- SQL Cmd -->
+                <DataGridTextColumn Header="SQL Cmd" 
+                    Binding="{Binding SqlQuery, UpdateSourceTrigger=PropertyChanged}" 
+                    Width="*"
+                    MinWidth="50"/>
+
+
                 <!-- Edit Query Button -->
                 <DataGridTemplateColumn Header="SQL Query" Width="100">
                     <DataGridTemplateColumn.CellTemplate>

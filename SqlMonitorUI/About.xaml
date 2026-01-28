@@ -1,0 +1,16 @@
+﻿<Window x:Class="SqlMonitorUI.About"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SqlMonitorUI"
+        mc:Ignorable="d"
+        WindowStyle="ToolWindow"
+        Title="About" Height="600" Width="900">
+    <Grid>
+        <TextBlock HorizontalAlignment="Left" Height="405" Margin="91,29,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="634"><Run Text="Thank you for using SQLDBA's SQL health"/><Run Text="-"/><Run Text="check "/><Run Text="utility"/><Run Text=" "/><LineBreak/><Run Text="We use open-source frameworks and scripts to run diagnostics against SQL servers."/><LineBreak/><Run/><LineBreak/><Run Text="This tool does basic diagnostics within the application, and offers some basic real-time monitoring. You have the option to run a full audit, which runs some SQL scripts against the SQL servers. The information is stored in CSV format in the &quot;output&quot; folder, feel free to have a look."/><LineBreak/><Run Text="The scripts used are stored in the &quot;scripts&quot; folder, you are welcome to have a peek at them as well."/><LineBreak/><Run/><LineBreak/><Run Text="We, as SQLDBA, don't access any information from your servers. There is no direct connection between this app and the outside world. The only connection is to Azure blob store, and that has to be initiated by the user, and confirmed. We do not initiate any data transfer, and let's be honest, any information you choose to share with a 3rd party is totally up to you."/><LineBreak/><Run/><LineBreak/><Run Text="You have the option to upload data to our secure Azure Blob store for further processing. This is optional, and we will gladly compile a report for you on the data."/><LineBreak/><Run/><LineBreak/><Run Text="All information handled by SQLDBA is kept private and "/><Run Text="gets "/><Run Text="securely disposed"/><Run Text=" of. You can request a data removal at any time and we will gladly process that for you"/><Run Text=". You can read more about our privacy and what is covered by our unilateral NDA at www.sqldba.org/nda"/><LineBreak/><Run/><LineBreak/><Run Text="If you have any questions, queries, or comments about this app, or what we do, feel free to reach out to adrian@sqldba.org"/><LineBreak/><Run/><LineBreak/><Run Text="Warm regards,"/><LineBreak/><Run Text="Adrian"/><Run Language="en-nz" Text=" "/><Run Text="Sullivan"/><LineBreak/><Run/><Run Text="                    "/></TextBlock>
+        <Image HorizontalAlignment="Left" Height="80" Margin="10,10,0,0" VerticalAlignment="Top" Width="73" Source="/sqldba_logo.png"/>
+        <Button Content="Close" HorizontalAlignment="Left" Height="29" Margin="692,386,0,0" VerticalAlignment="Top" Width="69" Click="Button_Click"/>
+
+    </Grid>
+</Window>

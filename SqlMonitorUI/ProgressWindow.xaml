@@ -4,9 +4,9 @@
         Title="Health Check Progress" 
         Height="200" 
         Width="450"
-        
-        WindowStartupLocation="CenterOwner"
+        WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
+  
         Background="#F5F5F5">
     
     <Grid Margin="20">

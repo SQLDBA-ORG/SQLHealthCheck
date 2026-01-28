@@ -6,8 +6,11 @@ namespace SqlMonitorUI
     {
         public bool ImportSpBlitz { get; private set; }
         public bool ImportSpTriage { get; private set; }
+        public bool ImportBpCheck { get; private set; }
         public string? SpBlitzPath { get; private set; }
         public string? SpTriagePath { get; private set; }
+        public string? BpCheckPath { get; private set; }
+        public bool DetectDuplicates { get; private set; }
 
         public ImportChecksDialog()
         {
@@ -51,6 +54,24 @@ namespace SqlMonitorUI
             }
         }
 
+        private void BrowseBpCheckButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Select Check_BP_Servers.sql file",
+                Filter = "SQL Files (*.sql)|*.sql|All Files (*.*)|*.*",
+                DefaultExt = ".sql"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                BpCheckPathTextBox.Text = dialog.FileName;
+                BpCheckPath = dialog.FileName;
+                BpCheckCheckBox.IsChecked = true;
+                UpdateImportButtonState();
+            }
+        }
+
         private void SpBlitzCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             if (BrowseSpBlitzButton == null) return;
@@ -65,9 +86,16 @@ namespace SqlMonitorUI
             UpdateImportButtonState();
         }
 
+        private void BpCheckCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (BrowseBpCheckButton == null) return;
+            BrowseBpCheckButton.IsEnabled = BpCheckCheckBox.IsChecked == true;
+            UpdateImportButtonState();
+        }
+
         private void UpdateImportButtonState()
         {
-            if (SpBlitzCheckBox == null || SpTriageCheckBox == null || ImportButton == null) return;
+            if (SpBlitzCheckBox == null || SpTriageCheckBox == null || BpCheckCheckBox == null || ImportButton == null) return;
             
             bool canImport = false;
 
@@ -77,6 +105,9 @@ namespace SqlMonitorUI
             if (SpTriageCheckBox.IsChecked == true && !string.IsNullOrEmpty(SpTriagePath))
                 canImport = true;
 
+            if (BpCheckCheckBox.IsChecked == true && !string.IsNullOrEmpty(BpCheckPath))
+                canImport = true;
+
             ImportButton.IsEnabled = canImport;
         }
 
@@ -84,6 +115,8 @@ namespace SqlMonitorUI
         {
             ImportSpBlitz = SpBlitzCheckBox.IsChecked == true && !string.IsNullOrEmpty(SpBlitzPath);
             ImportSpTriage = SpTriageCheckBox.IsChecked == true && !string.IsNullOrEmpty(SpTriagePath);
+            ImportBpCheck = BpCheckCheckBox.IsChecked == true && !string.IsNullOrEmpty(BpCheckPath);
+            DetectDuplicates = DetectDuplicatesCheckBox.IsChecked == true;
 
             this.DialogResult = true;
             this.Close();

@@ -5,6 +5,8 @@ using System.Linq;
 using System.Windows;
 using SqlCheckLibrary.Models;
 using SqlCheckLibrary.Services;
+using System.Windows.Controls;
+
 
 namespace SqlMonitorUI
 {
@@ -13,6 +15,7 @@ namespace SqlMonitorUI
         private readonly CompleteHealthCheckRunner _runner;
         private ObservableCollection<ScriptConfiguration> _scripts;
         private const string SCRIPTS_FOLDER = "scripts";
+        private string _connectionString;
 
         public ScriptManagerWindow(string connectionString)
         {
@@ -20,9 +23,11 @@ namespace SqlMonitorUI
             _runner = new CompleteHealthCheckRunner(connectionString);
             _scripts = new ObservableCollection<ScriptConfiguration>();
             ScriptsDataGrid.ItemsSource = _scripts;
-
+            _connectionString = connectionString;
             Loaded += ScriptManagerWindow_Loaded;
         }
+
+
 
         private async void ScriptManagerWindow_Loaded(object sender, RoutedEventArgs e)
         {
@@ -205,5 +210,17 @@ namespace SqlMonitorUI
         {
             StatusText.Text = $"{DateTime.Now:HH:mm:ss} - {message}";
         }
+
+      // private void EditSqlScriptButton_Click(object sender, RoutedEventArgs e)
+      // {
+      //     var button = sender as Button;
+      //     var script = button?.Tag as ScriptConfiguration;
+      //
+      //     if (script != null)
+      //     {
+      //         var editor = new SqlQueryEditorWindow(script, _connectionString);
+      //         editor.ShowDialog();
+      //     }
+      // }
     }
 }

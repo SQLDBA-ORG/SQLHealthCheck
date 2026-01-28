@@ -31,6 +31,12 @@ namespace SqlCheckLibrary.Models
         public string ExecutionParameters { get; set; } = string.Empty;
 
         /// <summary>
+        /// SQL query to run after ExecutionParameters to get CSV output data.
+        /// If empty, the ExecutionParameters result is used for CSV export.
+        /// </summary>
+        public string SqlQueryForOutput { get; set; } = string.Empty;
+
+        /// <summary>
         /// Whether to run this script during complete health check
         /// </summary>
         public bool Enabled { get; set; } = true;

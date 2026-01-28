@@ -1,20 +1,33 @@
+using Azure;
+using Azure.Storage.Blobs;
+
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
+
+//using Microsoft.WindowsAzure.Storage;
+//using Microsoft.WindowsAzure.Storage.Auth;
+//using Microsoft.WindowsAzure.Storage.Blob;
+using SqlCheckLibrary.Models;
+using SqlCheckLibrary.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data.Common;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
-using SqlCheckLibrary.Models;
-using SqlCheckLibrary.Services;
-using System.Threading.Tasks;
 
 namespace SqlMonitorUI
 {
+    
     public partial class MainWindow : Window
     {
         private CheckRepository _repository;
@@ -23,15 +36,17 @@ namespace SqlMonitorUI
         private ObservableCollection<ServerViewModel> _servers;
         private ICollectionView _resultsView;
         private DispatcherTimer? _memoryMonitorTimer;
-        
+        private string currentOutputFolder;
+        //private List<(string ConnectionString, string ServerName, bool IsOnline) FinalserverResults //= new List<(string ConnectionString, string ServerName, bool IsOnline)>();
+
         // Multi-server support
         private List<string> _serverNames = new List<string>();
         private List<string> _connectionStrings = new List<string>();
         private bool _runInParallel = true;
-        
+
         // Configuration
         private AppConfig _config;
-        
+
         // Status filter (null = all, "Passed", "Critical", "Warning", "Info")
         private string? _statusFilter = null;
 
@@ -42,15 +57,15 @@ namespace SqlMonitorUI
             _allResults = new ObservableCollection<CheckResultViewModel>();
             _categories = new ObservableCollection<CategoryViewModel>();
             _servers = new ObservableCollection<ServerViewModel>();
-            
+
             // Initialize config
             _config = AppConfig.Instance;
             _config.ConfigChanged += Config_ConfigChanged;
-            
+
             CategoryListBox.ItemsSource = _categories;
             ServerListBox.ItemsSource = _servers;
             ResultsDataGrid.ItemsSource = _allResults;
-            
+
             _resultsView = CollectionViewSource.GetDefaultView(_allResults);
             _resultsView.Filter = FilterResults;
 
@@ -77,14 +92,14 @@ namespace SqlMonitorUI
         {
             _serverNames = _config.Servers.ToList();
             _runInParallel = _config.RunInParallel;
-            
+
             // Build connection strings
             _connectionStrings = _serverNames.Select(server =>
             {
                 if (_config.UseWindowsAuth)
                 {
                     return ConnectionStringBuilder.BuildWithIntegratedSecurity(
-                        server, 
+                        server,
                         _config.DefaultDatabase,
                         true,  // encrypt
                         true); // trust cert
@@ -99,7 +114,7 @@ namespace SqlMonitorUI
                         true);
                 }
             }).ToList();
-            
+
             // Update display
             UpdateServerDisplayText();
         }
@@ -140,8 +155,6 @@ namespace SqlMonitorUI
             _memoryMonitorTimer.Start();
         }
 
-      
-
         protected override void OnClosed(EventArgs e)
         {
             _memoryMonitorTimer?.Stop();
@@ -154,36 +167,24 @@ namespace SqlMonitorUI
 
             // Clear all connection pools to release resources
             Microsoft.Data.SqlClient.SqlConnection.ClearAllPools();
-            // Clean up resources
-            _allResults.Clear();
-            _categories.Clear();
-            _servers.Clear();
-            _serverNames.Clear();
-            _connectionStrings.Clear();
-
-            // Force garbage collection
-           // SqlConnection.ClearAllPools();
-            GC.Collect(2, GCCollectionMode.Forced, true, true);
-            GC.WaitForPendingFinalizers();
 
             base.OnClosed(e);
         }
-
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             try
             {
                 await _repository.LoadChecksAsync();
-                
+
                 // Load servers from config
                 LoadServersFromConfig();
-                
+
                 EmptyStatePanel.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading checks: {ex.Message}", "Error", 
+                MessageBox.Show($"Error loading checks: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -191,21 +192,21 @@ namespace SqlMonitorUI
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             // Pass existing server list (newline separated) or connection string
-            var existingServers = _serverNames.Count > 0 
-                ? string.Join(Environment.NewLine, _serverNames) 
+            var existingServers = _serverNames.Count > 0
+                ? string.Join(Environment.NewLine, _serverNames)
                 : ConnectionStringTextBox.Text;
-                
+
             var connectionDialog = new ConnectionDialog(existingServers);
             if (connectionDialog.ShowDialog() == true)
             {
                 _serverNames = connectionDialog.ServerNames;
                 _connectionStrings = connectionDialog.ConnectionStrings;
                 _runInParallel = connectionDialog.RunInParallel;
-                
+
                 // Save to config
                 _config.Servers = _serverNames;
                 _config.RunInParallel = _runInParallel;
-                
+
                 // Update display text
                 UpdateServerDisplayText();
             }
@@ -219,16 +220,16 @@ namespace SqlMonitorUI
                 var text = ConnectionStringTextBox.Text.Trim();
                 if (string.IsNullOrWhiteSpace(text))
                 {
-                    MessageBox.Show("Please configure server connection(s) using the Connect button.", 
+                    MessageBox.Show("Please configure server connection(s) using the Connect button.",
                         "Connection Required", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-                
+
                 // Single server from text box (legacy mode)
                 _serverNames = new List<string> { text.Contains("=") ? "Server" : text };
-                _connectionStrings = new List<string> 
-                { 
-                    text.Contains("=") ? text : ConnectionStringBuilder.BuildWithIntegratedSecurity(text) 
+                _connectionStrings = new List<string>
+                {
+                    text.Contains("=") ? text : ConnectionStringBuilder.BuildWithIntegratedSecurity(text)
                 };
             }
 
@@ -265,19 +266,19 @@ namespace SqlMonitorUI
                 UpdateStatistics();
                 UpdateCategories();
                 UpdateServers();
-                
+
                 // Clear any existing status filter
                 _statusFilter = null;
                 ClearCardHighlights();
-                
+
                 var serverCount = _serverNames.Count;
                 LastUpdateText.Text = $"Last updated: {DateTime.Now:g} ({serverCount} server{(serverCount > 1 ? "s" : "")})";
-                
+
                 ResultsDataGrid.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error running checks: {ex.Message}", "Error", 
+                MessageBox.Show($"Error running checks: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 EmptyStatePanel.Visibility = Visibility.Visible;
             }
@@ -300,7 +301,7 @@ namespace SqlMonitorUI
                 try
                 {
                     using var runner = new CheckRunner(connStr);
-                    
+
                     if (!await runner.TestConnectionAsync())
                     {
                         lock (lockObj)
@@ -424,7 +425,7 @@ namespace SqlMonitorUI
         {
             // Get a valid connection string - prefer from configured list
             var connectionString = _connectionStrings.FirstOrDefault();
-            
+
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 // Try to build one from the text box if it looks like a server name
@@ -440,36 +441,34 @@ namespace SqlMonitorUI
                     connectionString = text;
                 }
             }
-            
+
             var manager = new CheckManagerWindow(_repository, connectionString ?? string.Empty);
             manager.ShowDialog();
-            
+
             // Reload repository after manager closes
             _ = _repository.LoadChecksAsync();
         }
 
         private void LiveMonitorButton_Click(object sender, RoutedEventArgs e)
         {
-            var connectionString = _connectionStrings.FirstOrDefault();
-            
-            if (string.IsNullOrWhiteSpace(connectionString))
+            if (_connectionStrings == null || !_connectionStrings.Any())
             {
-                MessageBox.Show("Please configure a server connection first using the Connect button.", 
+                MessageBox.Show("Please configure a server connection first using the Connect button.",
                     "Connection Required", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var monitor = new LiveMonitoringWindow(connectionString);
+            var monitor = new LiveMonitoringWindow(_connectionStrings);
             monitor.Show();
         }
 
         private void ScriptManagerButton_Click(object sender, RoutedEventArgs e)
         {
             var connectionString = _connectionStrings.FirstOrDefault();
-            
+
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                MessageBox.Show("Please configure a server connection first using the Connect button.", 
+                MessageBox.Show("Please configure a server connection first using the Connect button.",
                     "Connection Required", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -480,17 +479,18 @@ namespace SqlMonitorUI
 
         private async void RunCompleteHealthCheckButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_connectionStrings.Count == 0 || _serverNames.Count == 0)
+            if (_connectionStrings == null || !_connectionStrings.Any())
             {
-                MessageBox.Show("Please configure a server connection first using the Connect button.",
+                MessageBox.Show("Please configure server connections first using the Connect button.",
                     "Connection Required",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            // Load script configurations using first connection
-            using var tempRunner = new CompleteHealthCheckRunner(_connectionStrings.First());
-            var scripts = await tempRunner.LoadScriptConfigurationsAsync();
+            // Load script configurations (use first connection string just to load configs)
+            var firstConnStr = _connectionStrings.First();
+            using var scriptRunner = new CompleteHealthCheckRunner(firstConnStr);
+            var scripts = await scriptRunner.LoadScriptConfigurationsAsync();
 
             if (scripts.Count == 0)
             {
@@ -502,7 +502,7 @@ namespace SqlMonitorUI
                 return;
             }
 
-            var enabledScripts = scripts.Where(s => s.Enabled).OrderBy(s => s.ExecutionOrder).ToList();
+            var enabledScripts = scripts.Where(s => s.Enabled).ToList();
             if (enabledScripts.Count == 0)
             {
                 MessageBox.Show("No enabled scripts found. Please enable at least one script in Script Manager.",
@@ -510,14 +510,40 @@ namespace SqlMonitorUI
                 return;
             }
 
-            var serverCount = _serverNames.Count;
-            var executionMode = _runInParallel ? "parallel" : "sequential";
-            
+            // Test all server connections first
+            var serverResults = new List<(string ConnectionString, string ServerName, bool IsOnline)>();
+            foreach (var connStr in _connectionStrings)
+            {
+                string serverName;
+                try { serverName = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connStr).DataSource; }
+                catch { serverName = "Unknown"; }
+                
+                var isOnline = await TestServerConnectionAsync(connStr);
+                serverResults.Add((connStr, serverName, isOnline));
+            }
+
+            var onlineServers = serverResults.Where(s => s.IsOnline).ToList();
+            var offlineServers = serverResults.Where(s => !s.IsOnline).ToList();
+
+            if (onlineServers.Count == 0)
+            {
+                MessageBox.Show("No servers are currently online. Please check your connections.",
+                    "No Servers Available", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var serverStatusMessage = $"Server Status:\n";
+            foreach (var srv in serverResults)
+            {
+                serverStatusMessage += $"  {(srv.IsOnline ? "✅" : "❌")} {srv.ServerName}\n";
+            }
+
             var result = MessageBox.Show(
-                $"This will execute {enabledScripts.Count} diagnostic script(s) on {serverCount} server(s) in {executionMode} mode:\n\n" +
-                $"Servers:\n{string.Join("\n", _serverNames.Select(s => $"• {s}"))}\n\n" +
-                $"Scripts:\n{string.Join("\n", enabledScripts.Select(s => $"• {s.Name}"))}\n\n" +
-                "Results will be exported to CSV in the output folder.\n\nContinue?",
+                $"This will execute {enabledScripts.Count} diagnostic script(s) on {onlineServers.Count} server(s):\n\n" +
+                serverStatusMessage + "\n" +
+                "Scripts to run:\n" +
+                string.Join("\n", enabledScripts.Select(s => $"• {s.Name}")) +
+                "\n\nResults will be exported to CSV in the output folder.\n\nContinue?",
                 "Confirm Complete Health Check",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -535,76 +561,36 @@ namespace SqlMonitorUI
 
                 var outputFolder = Path.Combine(
                     AppDomain.CurrentDomain.BaseDirectory,
-                    "output");
-
+                    "output",
+                    $"Audit_{DateTime.Now:yyyyMMdd_HHmmss}");
+                currentOutputFolder = outputFolder;
                 Directory.CreateDirectory(outputFolder);
 
-                var totalOperations = serverCount * enabledScripts.Count;
-                var completedOperations = 0;
-
-                if (_runInParallel)
+                int serverIndex = 0;
+                foreach (var server in onlineServers)
                 {
-                    // Parallel execution: run all servers simultaneously, scripts in order per server
-                    var tasks = _connectionStrings.Select(async (connStr, index) =>
-                    {
-                        var serverName = _serverNames[index];
-                        using var runner = new CompleteHealthCheckRunner(connStr);
-                        
-                        foreach (var script in enabledScripts)
-                        {
-                            try
-                            {
-                                await runner.RunSingleScriptAsync(script, outputFolder, serverName);
-                            }
-                            catch (Exception ex)
-                            {
-                                // Log error but continue with other scripts
-                                System.Diagnostics.Debug.WriteLine($"Error running {script.Name} on {serverName}: {ex.Message}");
-                            }
-                            
-                            completedOperations++;
-                            var pct = (int)((double)completedOperations / totalOperations * 100);
-                            Dispatcher.Invoke(() => progress.UpdateProgress($"Running scripts... ({completedOperations}/{totalOperations})", pct));
-                        }
-                    });
+                    serverIndex++;
+                    var serverOutputFolder = Path.Combine(outputFolder, SanitizeFileName(server.ServerName));
+                    Directory.CreateDirectory(serverOutputFolder);
 
-                    await Task.WhenAll(tasks);
-                }
-                else
-                {
-                    // Sequential execution: one server at a time, scripts in order
-                    for (int i = 0; i < _connectionStrings.Count; i++)
-                    {
-                        var connStr = _connectionStrings[i];
-                        var serverName = _serverNames[i];
-                        
-                        using var runner = new CompleteHealthCheckRunner(connStr);
-                        
-                        foreach (var script in enabledScripts)
-                        {
-                            try
-                            {
-                                progress.UpdateProgress($"Running {script.Name} on {serverName}...", 
-                                    (int)((double)completedOperations / totalOperations * 100));
-                                
-                                await runner.RunSingleScriptAsync(script, outputFolder, serverName);
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Error running {script.Name} on {serverName}: {ex.Message}");
-                            }
-                            
-                            completedOperations++;
-                        }
-                    }
+                    progress.UpdateProgress($"[{serverIndex}/{onlineServers.Count}] Running on {server.ServerName}...", 
+                        (int)((double)serverIndex / onlineServers.Count * 100));
+
+                    using var runner = new CompleteHealthCheckRunner(server.ConnectionString);
+                    await runner.RunCompleteHealthCheckAsync(
+                        scripts,
+                        serverOutputFolder,
+                        (msg, pct) => progress.UpdateProgress($"[{server.ServerName}] {msg}", pct));
                 }
 
                 progress.Close();
 
-                MessageBox.Show(
-                    $"Complete health check finished!\n\n" +
-                    $"Checked {serverCount} server(s) with {enabledScripts.Count} script(s).\n\n" +
-                    $"Results exported to:\n{outputFolder}",
+                var summaryMessage = $"Complete health check finished!\n\n" +
+                    $"Servers processed: {onlineServers.Count}\n" +
+                    (offlineServers.Any() ? $"Servers skipped (offline): {offlineServers.Count}\n" : "") +
+                    $"\nResults exported to:\n{outputFolder}";
+
+                MessageBox.Show(summaryMessage,
                     "Health Check Complete",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -620,125 +606,37 @@ namespace SqlMonitorUI
             finally
             {
                 RunCompleteHealthCheckButton.IsEnabled = true;
+                UploadtoAzure.IsEnabled = true;
+                UploadtoAzure.Foreground = Brushes.White;
+       
             }
         }
 
-        private async void ImportBlitzButton_Click(object sender, RoutedEventArgs e)
+        private async System.Threading.Tasks.Task<bool> TestServerConnectionAsync(string connectionString)
         {
-            try
+            return await System.Threading.Tasks.Task.Run(() =>
             {
-                // Open file dialog to select sp_Blitz.sql or sp_triage.sql
-                var dialog = new Microsoft.Win32.OpenFileDialog
+                try
                 {
-                    Title = "Select sp_Blitz.sql or sp_triage.sql file",
-                    Filter = "SQL Files (*.sql)|*.sql|All Files (*.*)|*.*",
-                    DefaultExt = ".sql"
-                };
-
-                if (dialog.ShowDialog() != true)
-                    return;
-
-                ImportBlitzButton.IsEnabled = false;
-                ImportBlitzButton.Content = "⏳ Importing...";
-
-                var parser = new SpBlitzParser();
-                var fileName = System.IO.Path.GetFileName(dialog.FileName).ToLower();
-                
-                List<SpBlitzParser.BlitzCheck> checksToImport;
-                string source;
-
-                // Determine which script this is
-                if (fileName.Contains("sp_blitz"))
-                {
-                    source = "sp_Blitz";
-                    checksToImport = await parser.ParseSpBlitzFile(dialog.FileName);
-                }
-                else if (fileName.Contains("sp_triage") || fileName.Contains("sqldba"))
-                {
-                    source = "sp_triage";
-                    checksToImport = await parser.ParseSpTriageFile(dialog.FileName);
-                }
-                else
-                {
-                    // Ask user which one it is
-                    var askResult = MessageBox.Show(
-                        "Could not determine script type from filename.\n\n" +
-                        "Click YES if this is sp_Blitz.sql\n" +
-                        "Click NO if this is sp_triage.sql",
-                        "Which Script?",
-                        MessageBoxButton.YesNoCancel,
-                        MessageBoxImage.Question);
-
-                    if (askResult == MessageBoxResult.Cancel)
+                    var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString)
                     {
-                        return;
-                    }
-
-                    source = askResult == MessageBoxResult.Yes ? "sp_Blitz" : "sp_triage";
-                    checksToImport = askResult == MessageBoxResult.Yes ?
-                        await parser.ParseSpBlitzFile(dialog.FileName) :
-                        await parser.ParseSpTriageFile(dialog.FileName);
+                        ConnectTimeout = 5
+                    };
+                    using var conn = new Microsoft.Data.SqlClient.SqlConnection(builder.ConnectionString);
+                    conn.Open();
+                    return true;
                 }
-                
-                if (checksToImport.Count == 0)
+                catch
                 {
-                    MessageBox.Show($"No checks found in the {source} file. Please verify the file format.", 
-                        "Import Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                    return false;
                 }
+            });
+        }
 
-                // Convert to SqlCheck format
-                var newChecks = parser.ConvertToSqlChecks(checksToImport, source);
-                
-                // Merge with existing checks
-                var existingChecks = _repository.GetAllChecks();
-                var mergedChecks = parser.MergeChecks(existingChecks, newChecks);
-
-                // Count implemented vs placeholder
-                var implemented = newChecks.Count(c => !c.SqlQuery.Contains("not yet implemented"));
-                var placeholders = newChecks.Count - implemented;
-
-                // Show summary and ask for confirmation
-                var message = $"Found {checksToImport.Count} checks in {source}\n\n" +
-                             $"Source: {source}\n" +
-                             $"New checks to add: {newChecks.Count(c => !existingChecks.Any(ec => ec.Id == c.Id))}\n" +
-                             $"Existing checks to update: {newChecks.Count(c => existingChecks.Any(ec => ec.Id == c.Id))}\n\n" +
-                             $"Working queries: {implemented}\n" +
-                             $"Placeholders: {placeholders}\n\n" +
-                             $"Total checks after import: {mergedChecks.Count}\n\n" +
-                             $"Continue with import?";
-
-                var confirmResult = MessageBox.Show(message, "Confirm Import", 
-                    MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (confirmResult != MessageBoxResult.Yes)
-                    return;
-
-                // Save merged checks
-                await parser.SaveChecksToFile(mergedChecks, "sql-checks.json");
-                
-                // Reload repository
-                await _repository.LoadChecksAsync();
-
-                MessageBox.Show($"Successfully imported {checksToImport.Count} checks from {source}!\n\n" +
-                               $"Source: {source}\n" +
-                               $"Total checks: {mergedChecks.Count}\n" +
-                               $"Enabled by default: {mergedChecks.Count(c => c.Enabled)}\n" +
-                               $"Working queries: {implemented}\n" +
-                               $"Placeholders: {placeholders}\n\n" +
-                               $"The 'Source' column in results will show which script each check came from.",
-                    "Import Successful", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error importing: {ex.Message}\n\n{ex.StackTrace}", 
-                    "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                ImportBlitzButton.IsEnabled = true;
-                ImportBlitzButton.Content = "📥 Import";
-            }
+        private string SanitizeFileName(string name)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return string.Join("_", name.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
         }
 
         private void UpdateStatistics()
@@ -750,7 +648,7 @@ namespace SqlMonitorUI
                 .Distinct()
                 .Count();
             InstanceCountText.Text = (uniqueServers > 0 ? uniqueServers : _serverNames.Count).ToString();
-            
+
             TotalChecksText.Text = _allResults.Count.ToString();
             PassedChecksText.Text = _allResults.Count(r => r.Passed).ToString();
             CriticalIssuesText.Text = _allResults.Count(r => !r.Passed && r.Severity == "Critical").ToString();
@@ -761,11 +659,11 @@ namespace SqlMonitorUI
         private void UpdateCategories()
         {
             _categories.Clear();
-            
+
             // Add "All" category
-            _categories.Add(new CategoryViewModel 
-            { 
-                Name = "All", 
+            _categories.Add(new CategoryViewModel
+            {
+                Name = "All",
                 Count = $"({_allResults.Count})",
                 Color = new SolidColorBrush(Color.FromRgb(0, 120, 212))
             });
@@ -778,9 +676,9 @@ namespace SqlMonitorUI
             foreach (var group in categoryGroups)
             {
                 var color = GetCategoryColor(group.Key);
-                _categories.Add(new CategoryViewModel 
-                { 
-                    Name = group.Key, 
+                _categories.Add(new CategoryViewModel
+                {
+                    Name = group.Key,
                     Count = $"({group.Count()})",
                     Color = new SolidColorBrush(color)
                 });
@@ -793,7 +691,7 @@ namespace SqlMonitorUI
         private void UpdateServers()
         {
             _servers.Clear();
-            
+
             // Get unique servers from results
             var serverGroups = _allResults
                 .Where(r => !string.IsNullOrEmpty(r.ServerName))
@@ -801,13 +699,13 @@ namespace SqlMonitorUI
                 .OrderBy(g => g.Key);
 
             var serverCount = serverGroups.Count();
-            
+
             // Add "All" option if there are multiple servers
             if (serverCount > 1)
             {
-                _servers.Add(new ServerViewModel 
-                { 
-                    Name = "All", 
+                _servers.Add(new ServerViewModel
+                {
+                    Name = "All",
                     Count = $"({_allResults.Count})",
                     Color = new SolidColorBrush(Color.FromRgb(107, 105, 214)) // Purple
                 });
@@ -817,13 +715,13 @@ namespace SqlMonitorUI
             foreach (var group in serverGroups)
             {
                 var failedCount = group.Count(r => !r.Passed);
-                var serverColor = failedCount > 0 
+                var serverColor = failedCount > 0
                     ? Color.FromRgb(216, 59, 1)    // Red if has failures
                     : Color.FromRgb(16, 124, 16);  // Green if all passed
-                    
-                _servers.Add(new ServerViewModel 
-                { 
-                    Name = group.Key, 
+
+                _servers.Add(new ServerViewModel
+                {
+                    Name = group.Key,
                     Count = $"({group.Count()})",
                     Color = new SolidColorBrush(serverColor)
                 });
@@ -933,8 +831,6 @@ namespace SqlMonitorUI
 
         #endregion
 
-
-
         private bool FilterResults(object obj)
         {
             if (obj is not CheckResultViewModel result)
@@ -984,6 +880,62 @@ namespace SqlMonitorUI
 
             return true;
         }
+
+    private void RunUploadtoAzureButton_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show($"This will upload data to SQLDBA's Azure Blob store. It's secure as, but you need to be aware that you are about to share data outside of your business.", "Data sharing",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            
+            var result = MessageBox.Show(
+            $"This will upload a CSV file from every server that was audited to Azure Blob store.\n\n" +
+            "Are you sure you'd like to continue?\n" +
+            "\n" +
+            "\n\nMore information on how we handle data is available on our webiste.\n\nwww.sqldba.org/nda \n"+
+            "Alternatively send the CSV output in password protected ZIP files to us at\nscriptoutput@sqldba.org \n\nContinue?",
+            "Confirm Complete Health Check Upload to Azure",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+            for (int i = 0; i < _connectionStrings.Count; i++)
+            {
+                
+                var servertoupload = _serverNames[i];
+
+
+
+                var psCommmand = ".\\azcopy.exe copy \"" + currentOutputFolder + "\\"+ servertoupload + "\\*.sp_triage_*.csv\" \"https://sqldbaorgstorage.blob.core.windows.net/raw/ready?sp=acw&st=2023-04-05T21:18:07Z&se=2033-06-04T05:18:07Z&spr=https&sv=2021-12-02&sr=d&sig=zCRXJULTwR6aTB5%2FBvt0T7dX98avVCafRtLOJzCT0y0%3D&sdd=1\" --recursive=true --check-length=false";
+                var psCommandBytes = System.Text.Encoding.Unicode.GetBytes(psCommmand);
+                var psCommandBase64 = Convert.ToBase64String(psCommandBytes);
+
+                //string createText = psCommmand;
+                //File.WriteAllText(currentOutputFolder + "\\azupload.ps1", createText);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy unrestricted -encodedCommand " + psCommandBase64 + "",
+                    UseShellExecute = true
+                };
+
+                try
+                {
+                    Process.Start(startInfo);
+                    // LogMessage(string.Format("Upload to Azure completed."));
+                }
+                catch (Exception ex)
+                {
+                    // LogMessage(string.Format("Error with azcopy: {0}", ex.Message));
+                }
+            }
+        }
+
+        private void AboutButton_Click(object sender, RoutedEventArgs e)
+        {
+            var about= new About();
+            about.Show();
+        }
     }
 
     // ViewModel for server filter
@@ -997,22 +949,6 @@ namespace SqlMonitorUI
     // ViewModel for check results
     public class CheckResultViewModel
     {
-        // Cached brushes (frozen for performance)
-        private static readonly SolidColorBrush GreenBrush;
-        private static readonly SolidColorBrush RedBrush;
-        private static readonly SolidColorBrush OrangeBrush;
-        private static readonly SolidColorBrush BlueBrush;
-        private static readonly SolidColorBrush GrayBrush;
-        
-        static CheckResultViewModel()
-        {
-            GreenBrush = new SolidColorBrush(Color.FromRgb(16, 124, 16)); GreenBrush.Freeze();
-            RedBrush = new SolidColorBrush(Color.FromRgb(216, 59, 1)); RedBrush.Freeze();
-            OrangeBrush = new SolidColorBrush(Color.FromRgb(255, 165, 0)); OrangeBrush.Freeze();
-            BlueBrush = new SolidColorBrush(Color.FromRgb(0, 120, 212)); BlueBrush.Freeze();
-            GrayBrush = new SolidColorBrush(Color.FromRgb(128, 128, 128)); GrayBrush.Freeze();
-        }
-
         public string CheckId { get; set; }
         public string CheckName { get; set; }
         public string Category { get; set; }
@@ -1022,22 +958,24 @@ namespace SqlMonitorUI
         public DateTime ExecutedAt { get; set; }
         public string Source { get; set; }
         public string ServerName { get; set; }
-        public string Status => Passed ? "Passed" : "Failed";
+        public string Status => Passed ? "Passed" : "Triggered";
         public string ExecutedAtFormatted => ExecutedAt.ToString("g");
 
-        public SolidColorBrush StatusColor => Passed ? GreenBrush : Severity switch
-        {
-            "Critical" => RedBrush,
-            "Warning" => OrangeBrush,
-            _ => BlueBrush
-        };
+        public SolidColorBrush StatusColor => Passed
+            ? new SolidColorBrush(Color.FromRgb(16, 124, 16))    // Green
+            : Severity switch
+            {
+                "Critical" => new SolidColorBrush(Color.FromRgb(216, 59, 1)),   // Red
+                "Warning" => new SolidColorBrush(Color.FromRgb(255, 165, 0)),   // Orange
+                _ => new SolidColorBrush(Color.FromRgb(0, 120, 212))            // Blue
+            };
 
         public SolidColorBrush SeverityBackground => Severity switch
         {
-            "Critical" => RedBrush,
-            "Warning" => OrangeBrush,
-            "Info" => BlueBrush,
-            _ => GrayBrush
+            "Critical" => new SolidColorBrush(Color.FromRgb(216, 59, 1)),
+            "Warning" => new SolidColorBrush(Color.FromRgb(255, 165, 0)),
+            "Info" => new SolidColorBrush(Color.FromRgb(0, 120, 212)),
+            _ => new SolidColorBrush(Color.FromRgb(128, 128, 128))
         };
 
         public CheckResultViewModel(CheckResult result, string source = "Custom", string serverName = "")

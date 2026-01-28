@@ -37,12 +37,19 @@ namespace SqlCheckLibrary.Services
 
         #region Connection Testing
 
-        public async Task<bool> TestConnectionAsync()
+        public async Task<bool> TestConnectionAsync(int timeoutSeconds = 5)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                // Build connection string with short timeout
+                var builder = new SqlConnectionStringBuilder(_connectionString)
+                {
+                    ConnectTimeout = timeoutSeconds
+                };
+                
+                using var connection = new SqlConnection(builder.ConnectionString);
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+                await connection.OpenAsync(cts.Token);
                 return true;
             }
             catch

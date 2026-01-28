@@ -1,29 +1,31 @@
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using Microsoft.Data.SqlClient;
 
 namespace SqlMonitorUI
 {
     public partial class LiveMonitoringWindow : Window
     {
-        private readonly string _connectionString;
+        private readonly List<string> _connectionStrings;
+        private string? _selectedConnectionString;
         private DispatcherTimer? _refreshTimer;
-        private DispatcherTimer? _gcTimer;
         private bool _isRunning;
-        private long _lastBatchReq, _lastTrans, _lastComp, _lastPhReads, _lastPhWrites;
+        private long _lastBatchReq, _lastTrans, _lastComp, _lastReads, _lastWrites;
         private DateTime _lastSampleTime = DateTime.MinValue;
+        private int _tickCount = 0;
 
-        // Reduced history from 120 to 60 points
-        private const int MaxHistoryPoints = 60;
-        private readonly Dictionary<string, long[]> _waitHistory = new();
-        private readonly Dictionary<string, int> _waitHistoryIndex = new();
+        private const int MaxHistoryPoints = 120;
+        private readonly Dictionary<string, Queue<long>> _waitHistory = new(); // Changed to long for values
         private readonly Dictionary<string, Color> _waitColors = new()
         {
             { "Locks", Color.FromRgb(220, 20, 60) }, { "Reads/Latches", Color.FromRgb(0, 120, 212) },
@@ -32,76 +34,158 @@ namespace SqlMonitorUI
             { "Parallelism", Color.FromRgb(107, 105, 214) }, { "Transaction Log", Color.FromRgb(216, 59, 1) }
         };
 
-        // Cached brushes to avoid repeated allocations
-        private readonly Dictionary<string, SolidColorBrush> _brushCache = new();
-        private static readonly SolidColorBrush GridLineBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230));
-        private static readonly SolidColorBrush LabelBrush = new SolidColorBrush(Color.FromRgb(100, 100, 100));
-        
+        // Baseline wait stats for delta calculation
         private Dictionary<string, long>? _baselineWaits;
         private Dictionary<string, long> _lastWaits = new();
 
-        // Use array instead of dictionary for SPIDs (max 200)
-        private readonly SpidHistory[] _spidHistories = new SpidHistory[500];
-        private readonly HashSet<int> _activeSpidSet = new();
+        private readonly Dictionary<int, SpidHistory> _spidHistories = new();
+        private const int SparklinePoints = 30;
 
-        // Reusable list for sessions
-        private readonly List<SessionItem> _sessionsList = new(100);
+        // Current blocking information
+        private List<BlockingInfo> _currentBlocking = new();
 
-        public LiveMonitoringWindow(string connectionString)
+        // Store SPID box positions for drawing blocking lines
+        private readonly Dictionary<int, Point> _spidBoxPositions = new();
+        private readonly Dictionary<int, Border> _spidBoxBorders = new();
+
+        public LiveMonitoringWindow(List<string> connectionStrings)
         {
             InitializeComponent();
-            _connectionString = connectionString;
-            
-            // Initialize arrays instead of queues
-            foreach (var key in _waitColors.Keys)
-            {
-                _waitHistory[key] = new long[MaxHistoryPoints];
-                _waitHistoryIndex[key] = 0;
-                _brushCache[key] = new SolidColorBrush(_waitColors[key]);
-                _brushCache[key].Freeze(); // Freeze for performance
-            }
-            
-            GridLineBrush.Freeze();
-            LabelBrush.Freeze();
-            
+            _connectionStrings = connectionStrings;
+            foreach (var key in _waitColors.Keys) _waitHistory[key] = new Queue<long>();
             BuildLegend();
-            try { ServerNameText.Text = new SqlConnectionStringBuilder(connectionString).DataSource; } catch { ServerNameText.Text = "Unknown"; }
-            
-            // GC timer - more aggressive, every 15 seconds
-            _gcTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
-            _gcTimer.Tick += (s, e) => PerformMemoryCleanup();
-            _gcTimer.Start();
-            
-            Loaded += (s, e) => StartMonitoring();
+
+            // Test connections and populate server dropdown
+            Loaded += async (s, e) => await TestAndPopulateServersAsync();
         }
 
-        private void PerformMemoryCleanup()
+        private async System.Threading.Tasks.Task TestAndPopulateServersAsync()
         {
-            // Clean up inactive SPIDs
-            for (int i = 0; i < _spidHistories.Length; i++)
+            StatusText.Text = "Testing server connections...";
+            var serverItems = new List<ServerItem>();
+
+            foreach (var connStr in _connectionStrings)
             {
-                var h = _spidHistories[i];
-                if (h != null && !h.IsActive && h.InactiveTicks > 20)
+                string serverName;
+                try { serverName = new SqlConnectionStringBuilder(connStr).DataSource; }
+                catch { serverName = "Unknown"; }
+
+                var item = new ServerItem
                 {
-                    _spidHistories[i] = null;
+                    ConnectionString = connStr,
+                    ServerName = serverName,
+                    DisplayName = serverName + " (testing...)",
+                    IsConnectable = false,
+                    TextColor = Brushes.Gray
+                };
+                serverItems.Add(item);
+            }
+
+            ServerCombo.ItemsSource = serverItems;
+
+            // Test each connection asynchronously
+            foreach (var item in serverItems)
+            {
+                var isConnectable = await TestConnectionAsync(item.ConnectionString);
+                item.IsConnectable = isConnectable;
+                item.DisplayName = isConnectable ? item.ServerName : item.ServerName + " (offline)";
+                item.TextColor = isConnectable ? Brushes.Black : Brushes.Gray;
+            }
+
+            // Refresh the combo box
+            ServerCombo.Items.Refresh();
+
+            // Auto-select first connectable server
+            var firstConnectable = serverItems.FirstOrDefault(s => s.IsConnectable);
+            if (firstConnectable != null)
+            {
+                ServerCombo.SelectedItem = firstConnectable;
+            }
+            else
+            {
+                StatusText.Text = "No servers available. Check connections.";
+            }
+        }
+
+        private async System.Threading.Tasks.Task<bool> TestConnectionAsync(string connectionString)
+        {
+            return await System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var builder = new SqlConnectionStringBuilder(connectionString)
+                    {
+                        ConnectTimeout = 5
+                    };
+                    using var conn = new SqlConnection(builder.ConnectionString);
+                    conn.Open();
+                    return true;
                 }
-            }
-            
-            // Force GC if over threshold
-            var memUsed = GC.GetTotalMemory(false);
-            if (memUsed > 150 * 1024 * 1024) // 150MB threshold
+                catch
+                {
+                    return false;
+                }
+            });
+        }
+
+        private void ServerCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ServerCombo.SelectedItem is ServerItem selectedServer)
             {
-                GC.Collect(2, GCCollectionMode.Forced, true, true);
-                GC.WaitForPendingFinalizers();
-                GC.Collect(2, GCCollectionMode.Forced, true, true);
+                if (!selectedServer.IsConnectable)
+                {
+                    ConnectionStatusText.Text = "Server offline";
+                    StartStopButton.IsEnabled = false;
+                    return;
+                }
+
+                // Stop current monitoring if running
+                if (_isRunning) StopMonitoring();
+
+                // Reset all state
+                ResetMonitoringState();
+
+                _selectedConnectionString = selectedServer.ConnectionString;
+                ConnectionStatusText.Text = "Connected";
+                StartStopButton.IsEnabled = true;
+
+                // Auto-start monitoring
+                StartMonitoring();
             }
-            else if (memUsed > 80 * 1024 * 1024) // 80MB - light cleanup
+        }
+
+        private void ResetMonitoringState()
+        {
+            _baselineWaits = null;
+            _lastWaits.Clear();
+            _lastBatchReq = 0;
+            _lastTrans = 0;
+            _lastComp = 0;
+            _lastReads = 0;
+            _lastWrites = 0;
+            _lastSampleTime = DateTime.MinValue;
+            _tickCount = 0;
+            _spidHistories.Clear();
+            _currentBlocking.Clear();
+            foreach (var key in _waitColors.Keys)
             {
-                GC.Collect(0, GCCollectionMode.Optimized, false);
+                _waitHistory[key].Clear();
             }
-            
-            // Update status with memory info
-            StatusText.Text = $"Monitoring... (Mem: {memUsed / 1024 / 1024}MB)";
+
+            // Reset UI
+            CpuText.Text = "--";
+            BatchReqText.Text = "--";
+            TransText.Text = "--";
+            CompilationsText.Text = "--";
+            ReadsText.Text = "--";
+            WritesText.Text = "--";
+            SessionsGrid.ItemsSource = null;
+            WaitStatsGrid.ItemsSource = null;
+            BlockingGrid.ItemsSource = null;
+            TopQueriesGrid.ItemsSource = null;
+            SpidBoxesCanvas.Children.Clear();
+            WaitGraphCanvas.Children.Clear();
+            YAxisCanvas.Children.Clear();
         }
 
         private void BuildLegend()
@@ -110,8 +194,7 @@ namespace SqlMonitorUI
             foreach (var kvp in _waitColors)
             {
                 var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 15, 5) };
-                var brush = _brushCache[kvp.Key];
-                sp.Children.Add(new Rectangle { Width = 14, Height = 14, Fill = brush, Margin = new Thickness(0, 0, 5, 0), RadiusX = 2, RadiusY = 2 });
+                sp.Children.Add(new Rectangle { Width = 14, Height = 14, Fill = new SolidColorBrush(kvp.Value), Margin = new Thickness(0, 0, 5, 0), RadiusX = 2, RadiusY = 2 });
                 sp.Children.Add(new TextBlock { Text = kvp.Key, FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
                 LegendPanel.Children.Add(sp);
             }
@@ -121,19 +204,10 @@ namespace SqlMonitorUI
 
         private void StartMonitoring()
         {
+            if (string.IsNullOrEmpty(_selectedConnectionString)) return;
+
             _isRunning = true;
-            _baselineWaits = null;
-            _lastWaits.Clear();
-            _lastPhReads = 0; _lastPhWrites = 0;
-            
-            // Clear history arrays
-            foreach (var key in _waitHistory.Keys)
-            {
-                Array.Clear(_waitHistory[key], 0, MaxHistoryPoints);
-                _waitHistoryIndex[key] = 0;
-            }
-            
-            StartStopButton.Content = "Stop";
+            StartStopButton.Content = "■ Stop";
             StartStopButton.Background = new SolidColorBrush(Color.FromRgb(216, 59, 1));
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(GetRefreshInterval()) };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
@@ -145,49 +219,54 @@ namespace SqlMonitorUI
         private void StopMonitoring()
         {
             _isRunning = false;
-            StartStopButton.Content = "Start";
+            StartStopButton.Content = "▶ Start";
             StartStopButton.Background = new SolidColorBrush(Color.FromRgb(16, 124, 16));
             _refreshTimer?.Stop(); _refreshTimer = null;
             StatusText.Text = "Stopped";
         }
 
         private int GetRefreshInterval() => RefreshIntervalCombo.SelectedIndex switch { 0 => 1, 1 => 5, 2 => 10, 3 => 30, _ => 5 };
-        
-        private void RefreshIntervalCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) 
-        { 
-            if (_refreshTimer != null) 
-                _refreshTimer.Interval = TimeSpan.FromSeconds(GetRefreshInterval()); 
+
+        private void RefreshIntervalCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_refreshTimer != null)
+                _refreshTimer.Interval = TimeSpan.FromSeconds(GetRefreshInterval());
         }
 
         private async System.Threading.Tasks.Task RefreshDataAsync()
         {
+            if (string.IsNullOrEmpty(_selectedConnectionString)) return;
+
             try
             {
-                DataTable? metrics = null;
-                DataTable? sessions = null;
-                
+                _tickCount++;
+                var shouldRefreshTopQueries = _tickCount % 30 == 0 || _tickCount == 1;
+
                 await System.Threading.Tasks.Task.Run(() =>
                 {
-                    using var conn = new SqlConnection(_connectionString);
+                    using var conn = new SqlConnection(_selectedConnectionString);
                     conn.Open();
-                    metrics = GetMetrics(conn);
-                    sessions = GetSessions(conn);
+                    var metrics = GetMetrics(conn);
+                    var sessions = GetSessions(conn);
+                    var blocking = GetBlockingInfo(conn);
+                    DataTable? topQueries = null;
+                    if (shouldRefreshTopQueries)
+                        topQueries = GetTopQueries(conn);
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        UpdateMetrics(metrics);
+                        UpdateSessions(sessions);
+                        UpdateBlocking(blocking);
+                        DrawWaitGraph();
+                        UpdateSpidBoxes();
+                        if (topQueries != null)
+                            UpdateTopQueries(topQueries);
+                        LastUpdateText.Text = $"Updated: {DateTime.Now:HH:mm:ss} (tick {_tickCount})";
+                    });
                 });
-                
-                if (metrics != null && sessions != null)
-                {
-                    UpdateMetrics(metrics);
-                    UpdateSessions(sessions);
-                    DrawWaitGraph();
-                    UpdateSpidBoxes();
-                    LastUpdateText.Text = $"Updated: {DateTime.Now:HH:mm:ss}";
-                    
-                    // Dispose DataTables immediately
-                    metrics.Dispose();
-                    sessions.Dispose();
-                }
             }
-            catch (Exception ex) { StatusText.Text = $"Error: {ex.Message}"; }
+            catch (Exception ex) { Dispatcher.Invoke(() => { StatusText.Text = $"Error: {ex.Message}"; }); }
         }
 
         private DataTable GetMetrics(SqlConnection conn)
@@ -208,17 +287,130 @@ SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('CXPACKET','EXCHANGE') THEN wait_time_
 SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('LOGBUFFER','LOGMGR','WRITELOG') THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS TransactionLog,
 @@TOTAL_READ AS PhReads,@@TOTAL_WRITE AS PhWrites,@BR AS BatchReq,@SC AS SqlComp,@TR AS Trans FROM sys.dm_os_wait_stats";
             using var cmd = new SqlCommand(q, conn) { CommandTimeout = 30 };
-            var dt = new DataTable(); 
-            using (var adapter = new SqlDataAdapter(cmd)) { adapter.Fill(dt); }
-            return dt;
+            var dt = new DataTable(); new SqlDataAdapter(cmd).Fill(dt); return dt;
         }
 
         private DataTable GetSessions(SqlConnection conn)
         {
-            const string q = "SELECT spid AS Spid,DB_NAME(dbid) AS [Database],status AS Status,CAST(cpu AS BIGINT) AS Cpu,CAST(physical_io AS BIGINT) AS PhysicalIo,hostname AS Hostname,program_name AS ProgramName FROM sys.sysprocesses WHERE spid>50 AND program_name NOT LIKE '%SQLMonitorUI%' ORDER BY cpu DESC";
+            const string q = @"SELECT 
+                s.spid AS Spid,
+                DB_NAME(s.dbid) AS [Database],
+                status AS Status,
+                CAST(cpu AS BIGINT) AS Cpu,
+                CAST(physical_io AS BIGINT) AS PhysicalIo,
+                hostname AS Hostname,
+                program_name AS ProgramName,
+                loginame AS LoginName,
+                cmd AS Command,
+                DATEDIFF(SECOND, last_batch, GETDATE()) AS IdleSeconds
+                , SomeText.text
+                , s.blocked
+            FROM sys.sysprocesses s
+            --CROSS APPLY sys.dm_exec_sql_text(sql_handle) e
+            LEFT OUTER JOIN
+            (
+            SELECT spid AS Spid, e.text
+            FROM sys.sysprocesses s
+            CROSS APPLY sys.dm_exec_sql_text(sql_handle) e
+            ) SomeText ON SomeText.spid = s.spid
+
+            WHERE s.spid>50 AND program_name NOT LIKE '%SQLMonitorUI%' 
+            AND (hostname <> '' AND program_name <> '')
+     
+            ORDER BY cpu DESC";
             using var cmd = new SqlCommand(q, conn) { CommandTimeout = 30 };
-            var dt = new DataTable(); 
-            using (var adapter = new SqlDataAdapter(cmd)) { adapter.Fill(dt); }
+            var dt = new DataTable(); new SqlDataAdapter(cmd).Fill(dt); return dt;
+        }
+
+        private DataTable GetBlockingInfo(SqlConnection conn)
+        {
+            const string q = @"SELECT 
+                t1.resource_type AS lock_type,
+                DB_NAME(resource_database_id) AS database_name,
+                t1.resource_associated_entity_id AS blk_object,
+                t1.request_mode AS lock_req,
+                t1.request_session_id AS wait_sid,
+                t2.wait_duration_ms AS wait_time,
+                t2.wait_type AS wait_type,
+                (SELECT text FROM sys.dm_exec_requests r
+                    CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) 
+                    WHERE r.session_id = t1.request_session_id) AS wait_batch,
+                (SELECT SUBSTRING(qt.text, r.statement_start_offset/2, 
+                    (CASE WHEN r.statement_end_offset = -1 
+                    THEN LEN(CONVERT(NVARCHAR(MAX), qt.text)) * 2 
+                    ELSE r.statement_end_offset END - r.statement_start_offset)/2) 
+                    FROM sys.dm_exec_requests r
+                    CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) qt
+                    WHERE r.session_id = t1.request_session_id) AS wait_stmt,
+                (SELECT text FROM sys.sysprocesses p
+                    CROSS APPLY sys.dm_exec_sql_text(p.sql_handle) 
+                    WHERE p.spid = t2.blocking_session_id) AS block_stmt,
+                t2.blocking_session_id AS blocker_sid
+            FROM sys.dm_tran_locks t1
+            INNER JOIN sys.dm_os_waiting_tasks t2 ON t1.lock_owner_address = t2.resource_address";
+
+            using var cmd = new SqlCommand(q, conn) { CommandTimeout = 30 };
+            var dt = new DataTable();
+            try { new SqlDataAdapter(cmd).Fill(dt); } catch { /* Ignore blocking query errors */ }
+            return dt;
+        }
+
+        private DataTable GetTopQueries(SqlConnection conn)
+        {
+            const string q = @"SELECT
+                TMP.Category,
+                DB_NAME(st.dbid) [DB],
+                TMP.[Total Elapsed Time in S],
+                TMP.[Total Execution Count],
+                TMP.[Total CPU Time in S],
+                TMP.[Total Logical Reads],
+                TMP.[Total Logical Writes],
+                TMP.[Total CLR Time],
+                TMP.[Number of Statements],
+                TMP.[Last Execution Time],
+                TMP.[Plan Handle],
+                st.text AS [Query],
+                qp.query_plan AS [Plan]
+
+            FROM (
+                SELECT * FROM (
+                    SELECT TOP 10 'worst I/O' [Category],
+                        CAST(SUM(s.total_elapsed_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total Elapsed Time in S],
+                        SUM(s.execution_count) AS [Total Execution Count],
+                        CAST(SUM(s.total_worker_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total CPU Time in S],
+                        SUM(s.total_logical_reads) AS [Total Logical Reads],
+                        SUM(s.total_logical_writes) AS [Total Logical Writes],
+                        SUM(s.total_clr_time) AS [Total CLR Time],
+                        COUNT(1) AS [Number of Statements],
+                        MAX(s.last_execution_time) AS [Last Execution Time],
+                        s.plan_handle AS [Plan Handle]
+                    FROM sys.dm_exec_query_stats s
+                    GROUP BY s.plan_handle ORDER BY SUM(s.total_logical_reads + s.total_logical_writes) DESC
+                ) TT
+                --UNION ALL
+                --SELECT * FROM (
+                --    SELECT TOP 10 'worst CPU' [Category],
+                --        CAST(SUM(s.total_elapsed_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total Elapsed Time in S],
+                --        SUM(s.execution_count) AS [Total Execution Count],
+                --        CAST(SUM(s.total_worker_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total CPU Time in S],
+                --        SUM(s.total_logical_reads) AS [Total Logical Reads],
+                --        SUM(s.total_logical_writes) AS [Total Logical Writes],
+                --        SUM(s.total_clr_time) AS [Total CLR Time],
+                --        COUNT(1) AS [Number of Statements],
+                --        MAX(s.last_execution_time) AS [Last Execution Time],
+                --        s.plan_handle AS [Plan Handle]
+                --    FROM sys.dm_exec_query_stats s
+                --    GROUP BY s.plan_handle ORDER BY SUM(s.total_worker_time) DESC
+                --) T
+            ) TMP
+            OUTER APPLY sys.dm_exec_sql_text(TMP.[Plan Handle]) AS st
+            OUTER APPLY
+	                sys.dm_exec_query_plan(TMP.[Plan Handle]) AS qp
+            ORDER BY Category, [Total Logical Reads] DESC";
+
+            using var cmd = new SqlCommand(q, conn) { CommandTimeout = 60 };
+            var dt = new DataTable();
+            try { new SqlDataAdapter(cmd).Fill(dt); } catch { /* Ignore query errors */ }
             return dt;
         }
 
@@ -228,269 +420,726 @@ SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('LOGBUFFER','LOGMGR','WRITELOG') THEN 
             var r = dt.Rows[0];
             var cpu = Convert.ToInt32(r["CPU"]);
             CpuText.Text = cpu.ToString();
-            CpuText.Foreground = cpu > 80 ? Brushes.OrangeRed : Brushes.DodgerBlue;
+            CpuText.Foreground = new SolidColorBrush(cpu > 80 ? Color.FromRgb(216, 59, 1) : Color.FromRgb(0, 120, 212));
 
             var now = DateTime.Now;
-            var br = Convert.ToInt64(r["BatchReq"]); var tr = Convert.ToInt64(r["Trans"]); var sc = Convert.ToInt64(r["SqlComp"]);
-            var phReads = Convert.ToInt64(r["PhReads"]); var phWrites = Convert.ToInt64(r["PhWrites"]);
-            
+            var br = Convert.ToInt64(r["BatchReq"]);
+            var tr = Convert.ToInt64(r["Trans"]);
+            var sc = Convert.ToInt64(r["SqlComp"]);
+            var reads = Convert.ToInt64(r["PhReads"]);
+            var writes = Convert.ToInt64(r["PhWrites"]);
+
             if (_lastSampleTime != DateTime.MinValue)
             {
                 var el = (now - _lastSampleTime).TotalSeconds;
-                if (el > 0) 
-                { 
-                    BatchReqText.Text = ((br-_lastBatchReq)/el).ToString("N0"); 
-                    TransText.Text = ((tr-_lastTrans)/el).ToString("N0"); 
-                    CompilationsText.Text = ((sc-_lastComp)/el).ToString("N0");
-                    ReadsText.Text = (phReads - _lastPhReads).ToString("N0");
-                    WritesText.Text = (phWrites - _lastPhWrites).ToString("N0");
+                if (el > 0)
+                {
+                    BatchReqText.Text = ((br - _lastBatchReq) / el).ToString("N0");
+                    TransText.Text = ((tr - _lastTrans) / el).ToString("N0");
+                    CompilationsText.Text = ((sc - _lastComp) / el).ToString("N0");
+                    // Page Reads and Writes as deltas per second
+                    ReadsText.Text = ((reads - _lastReads) / el).ToString("N0");
+                    WritesText.Text = ((writes - _lastWrites) / el).ToString("N0");
                 }
             }
-            _lastBatchReq = br; _lastTrans = tr; _lastComp = sc; 
-            _lastPhReads = phReads; _lastPhWrites = phWrites;
+            _lastBatchReq = br;
+            _lastTrans = tr;
+            _lastComp = sc;
+            _lastReads = reads;
+            _lastWrites = writes;
             _lastSampleTime = now;
 
-            var currentWaits = new Dictionary<string,long>(8){
-                {"Locks",Convert.ToInt64(r["Locks"])},{"Reads/Latches",Convert.ToInt64(r["Reads"])},
-                {"Writes/I/O",Convert.ToInt64(r["Writes"])},{"Network",Convert.ToInt64(r["Network"])},
-                {"Backup",Convert.ToInt64(r["Backup"])},{"Memory",Convert.ToInt64(r["Memory"])},
-                {"Parallelism",Convert.ToInt64(r["Parallelism"])},{"Transaction Log",Convert.ToInt64(r["TransactionLog"])}
+            // Current absolute wait values
+            var currentWaits = new Dictionary<string, long>{
+                {"Locks",Convert.ToInt64(r["Locks"])},
+                {"Reads/Latches",Convert.ToInt64(r["Reads"])},
+                {"Writes/I/O",Convert.ToInt64(r["Writes"])},
+                {"Network",Convert.ToInt64(r["Network"])},
+                {"Backup",Convert.ToInt64(r["Backup"])},
+                {"Memory",Convert.ToInt64(r["Memory"])},
+                {"Parallelism",Convert.ToInt64(r["Parallelism"])},
+                {"Transaction Log",Convert.ToInt64(r["TransactionLog"])}
             };
 
+            // Set baseline on first sample
             if (_baselineWaits == null)
             {
                 _baselineWaits = new Dictionary<string, long>(currentWaits);
                 _lastWaits = new Dictionary<string, long>(currentWaits);
             }
 
-            var ws = new List<WaitStatItem>(8);
-            long tot = 0;
-            
+            // Calculate delta from last sample (for graph) and from baseline (for table)
+            var deltaFromBaseline = new Dictionary<string, long>();
+            var deltaFromLast = new Dictionary<string, long>();
+
             foreach (var key in currentWaits.Keys)
             {
-                var delta = currentWaits[key] - _baselineWaits[key];
-                tot += delta;
-                
-                // Store delta in circular buffer
-                var deltaFromLast = currentWaits[key] - (_lastWaits.ContainsKey(key) ? _lastWaits[key] : currentWaits[key]);
-                var arr = _waitHistory[key];
-                var idx = _waitHistoryIndex[key];
-                arr[idx] = Math.Max(0, deltaFromLast);
-                _waitHistoryIndex[key] = (idx + 1) % MaxHistoryPoints;
-                
-                if (delta > 0)
-                    ws.Add(new WaitStatItem{WaitType=key,WaitTimeMs=delta,Color=_brushCache[key]});
+                deltaFromBaseline[key] = currentWaits[key] - _baselineWaits[key];
+                deltaFromLast[key] = currentWaits[key] - (_lastWaits.ContainsKey(key) ? _lastWaits[key] : currentWaits[key]);
             }
-            
-            _lastWaits = currentWaits;
-            
-            // Calculate percentages
-            foreach (var w in ws) w.Percentage = tot > 0 ? (double)w.WaitTimeMs/tot*100 : 0;
-            
-            WaitStatsGrid.ItemsSource = ws.OrderByDescending(w=>w.WaitTimeMs).ToList();
+
+            _lastWaits = new Dictionary<string, long>(currentWaits);
+
+            // Update table with delta from baseline
+            var tot = deltaFromBaseline.Values.Sum();
+            var ws = new List<WaitStatItem>();
+            foreach (var kv in deltaFromBaseline)
+            {
+                var pct = tot > 0 ? (double)kv.Value / tot * 100 : 0;
+                ws.Add(new WaitStatItem { WaitType = kv.Key, WaitTimeMs = kv.Value, Percentage = pct, Color = new SolidColorBrush(_waitColors[kv.Key]) });
+            }
+            WaitStatsGrid.ItemsSource = ws.Where(w => w.WaitTimeMs > 0).OrderByDescending(w => w.WaitTimeMs).ToList();
+
+            // Update graph with delta from last sample (actual ms values, not percentages)
+            foreach (var kv in deltaFromLast)
+            {
+                var val = Math.Max(0, kv.Value);
+                _waitHistory[kv.Key].Enqueue(val);
+                while (_waitHistory[kv.Key].Count > MaxHistoryPoints) _waitHistory[kv.Key].Dequeue();
+            }
         }
 
         private void DrawWaitGraph()
         {
             WaitGraphCanvas.Children.Clear();
-            var w = WaitGraphCanvas.ActualWidth; var h = WaitGraphCanvas.ActualHeight;
+            YAxisCanvas.Children.Clear();
+
+            var w = WaitGraphCanvas.ActualWidth;
+            var h = WaitGraphCanvas.ActualHeight;
             if (w <= 0 || h <= 0) return;
 
-            // Find max value
-            long maxVal = 1;
-            foreach (var arr in _waitHistory.Values)
-                foreach (var v in arr) if (v > maxVal) maxVal = v;
+            var maxPts = _waitHistory.Values.Max(q => q.Count);
+            if (maxPts < 2) return;
 
-            var graphLeft = 55.0;
-            var graphWidth = w - graphLeft - 5;
-            var graphHeight = h - 20;
-            var xStep = graphWidth / (MaxHistoryPoints - 1);
+            // Calculate max value across all history + 10% headroom
+            var allValues = _waitHistory.Values.SelectMany(q => q).ToList();
+            var maxVal = allValues.Any() ? (double)allValues.Max() : 1;
+            if (maxVal < 1) maxVal = 1;
+            maxVal = maxVal * 1.1; // Add 10% headroom
 
-            // Y axis labels (simplified - only 3 labels)
-            for (int i = 0; i <= 2; i++)
+            var xStep = w / (MaxHistoryPoints - 1);
+            var yPadding = 5.0;
+            var graphHeight = h - yPadding * 2;
+
+            // Draw Y-axis labels and grid lines
+            DrawYAxis(maxVal, h, w);
+
+            // Draw data lines
+            foreach (var kv in _waitHistory.Where(x => x.Value.Any(v => v > 0)))
             {
-                var yVal = maxVal * (2 - i) / 2;
-                var yPos = i * graphHeight / 2;
-                var label = new TextBlock { Text = FormatMs(yVal), FontSize = 9, Foreground = LabelBrush };
-                Canvas.SetLeft(label, 2); Canvas.SetTop(label, yPos - 6);
-                WaitGraphCanvas.Children.Add(label);
-                var gridLine = new Line { X1 = graphLeft, Y1 = yPos, X2 = w - 5, Y2 = yPos, Stroke = GridLineBrush, StrokeThickness = 1 };
-                WaitGraphCanvas.Children.Add(gridLine);
-            }
-
-            // Draw lines using simple polylines (faster than Bezier)
-            foreach (var kv in _waitHistory)
-            {
-                var arr = kv.Value;
-                var startIdx = _waitHistoryIndex[kv.Key];
-                var hasData = false;
-                for (int i = 0; i < MaxHistoryPoints && !hasData; i++) if (arr[i] > 0) hasData = true;
-                if (!hasData) continue;
-
-                var pl = new Polyline { Stroke = _brushCache[kv.Key], StrokeThickness = 1.5 };
-                for (int i = 0; i < MaxHistoryPoints; i++)
+                var pts = kv.Value.ToArray();
+                var off = MaxHistoryPoints - pts.Length;
+                var pl = new Polyline { Stroke = new SolidColorBrush(_waitColors[kv.Key]), StrokeThickness = 1.5 };
+                for (int i = 0; i < pts.Length; i++)
                 {
-                    var dataIdx = (startIdx + i) % MaxHistoryPoints;
-                    var x = graphLeft + i * xStep;
-                    var y = graphHeight - (arr[dataIdx] / (double)maxVal * graphHeight);
-                    pl.Points.Add(new Point(x, Math.Max(0, y)));
+                    var yVal = h - yPadding - ((double)pts[i] / maxVal * graphHeight);
+                    pl.Points.Add(new Point((off + i) * xStep, yVal));
                 }
                 WaitGraphCanvas.Children.Add(pl);
             }
         }
 
-        private string FormatMs(long ms)
+        private void DrawYAxis(double maxVal, double canvasHeight, double graphWidth)
         {
-            if (ms >= 1000000) return $"{ms/1000000}M";
-            if (ms >= 1000) return $"{ms/1000}K";
-            return ms.ToString();
+            var yAxisWidth = YAxisCanvas.ActualWidth > 0 ? YAxisCanvas.ActualWidth : 50;
+            var yPadding = 5.0;
+            var graphHeight = canvasHeight - yPadding * 2;
+
+            // Determine nice tick values
+            var tickCount = 5;
+            var tickStep = maxVal / tickCount;
+
+            // Round tick step to nice numbers
+            if (tickStep > 0)
+            {
+                var magnitude = Math.Pow(10, Math.Floor(Math.Log10(tickStep)));
+                var normalized = tickStep / magnitude;
+                double niceStep;
+                if (normalized <= 1) niceStep = 1;
+                else if (normalized <= 2) niceStep = 2;
+                else if (normalized <= 5) niceStep = 5;
+                else niceStep = 10;
+                tickStep = niceStep * magnitude;
+            }
+            else
+            {
+                tickStep = 1;
+            }
+
+            for (int i = 0; i <= tickCount; i++)
+            {
+                var value = i * tickStep;
+                if (value > maxVal * 1.05) break;
+
+                var yPos = canvasHeight - yPadding - (value / maxVal * graphHeight);
+
+                // Y-axis label - format based on magnitude
+                string labelText;
+                if (value >= 1000000) labelText = (value / 1000000).ToString("F1") + "M";
+                else if (value >= 1000) labelText = (value / 1000).ToString("F1") + "K";
+                else labelText = value.ToString("F0");
+
+                var label = new TextBlock
+                {
+                    Text = labelText,
+                    FontSize = 9,
+                    Foreground = Brushes.Gray,
+                    TextAlignment = TextAlignment.Right,
+                    Width = yAxisWidth - 5
+                };
+                Canvas.SetRight(label, 2);
+                Canvas.SetTop(label, yPos - 7);
+                YAxisCanvas.Children.Add(label);
+
+                // Grid line on main canvas
+                var gridLine = new Line
+                {
+                    X1 = 0,
+                    Y1 = yPos,
+                    X2 = graphWidth,
+                    Y2 = yPos,
+                    Stroke = Brushes.LightGray,
+                    StrokeThickness = 0.5,
+                    StrokeDashArray = new DoubleCollection { 2, 2 }
+                };
+                WaitGraphCanvas.Children.Add(gridLine);
+            }
         }
 
         private void UpdateSessions(DataTable dt)
         {
-            _sessionsList.Clear();
-            _activeSpidSet.Clear();
-            long totCpu = 0, totIo = 0;
-            
+            var sess = new List<SessionItem>(); long totCpu = 0, totIo = 0;
             foreach (DataRow r in dt.Rows)
             {
-                var spid = Convert.ToInt32(r["Spid"]);
-                var cpu = Convert.ToInt64(r["Cpu"]); 
-                var io = Convert.ToInt64(r["PhysicalIo"]);
+                var cpu = Convert.ToInt64(r["Cpu"]); var io = Convert.ToInt64(r["PhysicalIo"]);
                 totCpu += cpu; totIo += io;
-                _activeSpidSet.Add(spid);
-                _sessionsList.Add(new SessionItem{Spid=spid,Database=r["Database"]?.ToString()??"",Status=r["Status"]?.ToString()??"",Cpu=cpu,PhysicalIo=io,Hostname=r["Hostname"]?.ToString()??"",ProgramName=r["ProgramName"]?.ToString()??""});
-            }
-            
-            // Update SPID histories
-            for (int i = 0; i < _spidHistories.Length; i++)
-            {
-                var h = _spidHistories[i];
-                if (h != null && !_activeSpidSet.Contains(h.Spid))
+                sess.Add(new SessionItem
                 {
-                    h.IsActive = false;
-                    h.InactiveTicks++;
-                }
+                    Spid = Convert.ToInt32(r["Spid"]),
+                    Database = r["Database"]?.ToString() ?? "",
+                    Status = r["Status"]?.ToString() ?? "",
+                    Cpu = cpu,
+                    PhysicalIo = io,
+                    Hostname = r["Hostname"]?.ToString() ?? "",
+                    ProgramName = r["ProgramName"]?.ToString() ?? "",
+                    LoginName = r["LoginName"]?.ToString() ?? "",
+                    Command = r["Command"]?.ToString() ?? "",
+                    text = r["text"]?.ToString() ?? "",
+                    Blocked = r["blocked"]?.ToString() ?? "",
+                    IdleSeconds = r["IdleSeconds"] != DBNull.Value ? Convert.ToInt32(r["IdleSeconds"]) : 0
+                });
             }
-            
-            foreach (var s in _sessionsList)
+            foreach (var s in sess)
             {
-                var idx = s.Spid % _spidHistories.Length;
-                var h = _spidHistories[idx];
-                if (h == null || h.Spid != s.Spid)
-                {
-                    _spidHistories[idx] = h = new SpidHistory { Spid = s.Spid };
-                }
-                
-                var cpuDelta = s.Cpu - h.LastCpu;
-                var ioDelta = s.PhysicalIo - h.LastIo;
-                if (cpuDelta > 0) h.AddCpuSample(cpuDelta);
-                if (ioDelta > 0) h.AddIoSample(ioDelta);
-                h.LastCpu = s.Cpu;
-                h.LastIo = s.PhysicalIo;
-                h.IsActive = true;
-                h.InactiveTicks = 0;
+                var cpuPct = totCpu > 0 ? (double)s.Cpu / totCpu * 100 : 0;
+                var ioPct = totIo > 0 ? (double)s.PhysicalIo / totIo * 100 : 0;
+                if (!_spidHistories.ContainsKey(s.Spid)) _spidHistories[s.Spid] = new SpidHistory { Spid = s.Spid };
+                _spidHistories[s.Spid].AddSample(cpuPct, ioPct);
+                _spidHistories[s.Spid].Database = s.Database;
+                _spidHistories[s.Spid].IsActive = true;
+                _spidHistories[s.Spid].Hostname = s.Hostname;
+                _spidHistories[s.Spid].ProgramName = s.ProgramName;
+                _spidHistories[s.Spid].LoginName = s.LoginName;
+                _spidHistories[s.Spid].Command = s.Command;
+                _spidHistories[s.Spid].text = s.text;
+                _spidHistories[s.Spid].Blocked = s.Blocked;
+                _spidHistories[s.Spid].Status = s.Status;
+                _spidHistories[s.Spid].IdleSeconds = s.IdleSeconds;
+                _spidHistories[s.Spid].LastCpu = s.Cpu;
+                _spidHistories[s.Spid].LastIo = s.PhysicalIo;
             }
-            
-            SessionsGrid.ItemsSource = null;
-            SessionsGrid.ItemsSource = _sessionsList;
-            SessionCountText.Text = $" ({_sessionsList.Count})";
+            var active = sess.Select(x => x.Spid).ToHashSet();
+            foreach (var h in _spidHistories.Values) if (!active.Contains(h.Spid)) { h.IsActive = false; h.AddSample(0, 0); }
+            SessionsGrid.ItemsSource = sess;
+            SessionCountText.Text = $" ({sess.Count})";
+        }
+
+        private void UpdateBlocking(DataTable dt)
+        {
+            _currentBlocking.Clear();
+
+            foreach (DataRow r in dt.Rows)
+            {
+                _currentBlocking.Add(new BlockingInfo
+                {
+                    LockType = r["lock_type"]?.ToString() ?? "",
+                    DatabaseName = r["database_name"]?.ToString() ?? "",
+                    WaitSpid = r["wait_sid"] != DBNull.Value ? Convert.ToInt32(r["wait_sid"]) : 0,
+                    BlockerSpid = r["blocker_sid"] != DBNull.Value ? Convert.ToInt32(r["blocker_sid"]) : 0,
+                    WaitDurationMs = r["wait_time"] != DBNull.Value ? Convert.ToInt64(r["wait_time"]) : 0,
+                    WaitType = r["wait_type"]?.ToString() ?? "",
+                    WaitStatement = r["wait_stmt"]?.ToString() ?? r["wait_batch"]?.ToString() ?? "",
+                    BlockerStatement = r["block_stmt"]?.ToString() ?? ""
+
+                });
+            }
+
+            BlockingGrid.ItemsSource = _currentBlocking.OrderByDescending(b => b.WaitDurationMs).ToList();
+            BlockingCountText.Text = $" ({_currentBlocking.Count})";
+            BlockingAlert.Visibility = _currentBlocking.Any() ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void UpdateTopQueries(DataTable dt)
+        {
+            var queries = new List<TopQueryItem>();
+
+            foreach (DataRow r in dt.Rows)
+            {
+                queries.Add(new TopQueryItem
+                {
+                    Category = r["Category"]?.ToString() ?? "",
+                    Database = r["DB"]?.ToString() ?? "",
+                    TotalElapsedTimeS = r["Total Elapsed Time in S"] != DBNull.Value ? Convert.ToDecimal(r["Total Elapsed Time in S"]) : 0,
+                    ExecutionCount = r["Total Execution Count"] != DBNull.Value ? Convert.ToInt64(r["Total Execution Count"]) : 0,
+                    TotalCpuTimeS = r["Total CPU Time in S"] != DBNull.Value ? Convert.ToDecimal(r["Total CPU Time in S"]) : 0,
+                    TotalLogicalReads = r["Total Logical Reads"] != DBNull.Value ? Convert.ToInt64(r["Total Logical Reads"]) : 0,
+                    TotalLogicalWrites = r["Total Logical Writes"] != DBNull.Value ? Convert.ToInt64(r["Total Logical Writes"]) : 0,
+                    QueryText = r["Query"]?.ToString()?.Replace("\r", " ").Replace("\n", " ").Trim() ?? "",
+                    PlanHandle = r["Plan Handle"] != DBNull.Value ? (byte[])r["Plan Handle"] : null
+                });
+            }
+
+            TopQueriesGrid.ItemsSource = queries;
         }
 
         private void UpdateSpidBoxes()
         {
-            SpidBoxesPanel.Children.Clear();
-            
-            // Collect and sort active SPIDs
-            var activeList = new List<SpidHistory>(50);
-            for (int i = 0; i < _spidHistories.Length; i++)
+            if (SpidBoxesCanvas == null) return; // avoid calling before UI is built
+
+
+            SpidBoxesCanvas.Children.Clear();
+            _spidBoxPositions.Clear();
+            _spidBoxBorders.Clear();
+
+            var blockerSpids = _currentBlocking.Select(b => b.BlockerSpid).ToHashSet();
+            var waitSpids = _currentBlocking.Select(b => b.WaitSpid).ToHashSet();
+
+            var allRelevant = _spidHistories.Values
+                //.Where(h => h.CpuHistory.Any(v => v > 0) || h.IoHistory.Any(v => v > 0))
+                .OrderByDescending(h => h.IoHistory.Sum())
+                //.OrderByDescending(h => h.Spid)
+                .ThenByDescending(h => h.CpuHistory.Sum())
+                .ToList();
+
+            // Apply program filter if specified
+            var rel = allRelevant;
+            if (!string.IsNullOrEmpty(_programFilter))
             {
-                var h = _spidHistories[i];
-                if (h != null && (h.IsActive || h.InactiveTicks <= 20))
-                    activeList.Add(h);
+                rel = allRelevant
+                    .Where(h => h.ProgramName != null && 
+                           h.ProgramName.IndexOf(_programFilter, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+                
+                FilteredCountText.Text = $"Showing {rel.Count} of {allRelevant.Count} sessions (filtered by '{_programFilter}')";
             }
-            
-            activeList.Sort((a, b) => {
-                if (a.IsActive != b.IsActive) return b.IsActive.CompareTo(a.IsActive);
-                var ioCmp = b.IoMovingAvg.CompareTo(a.IoMovingAvg);
-                return ioCmp != 0 ? ioCmp : b.CpuMovingAvg.CompareTo(a.CpuMovingAvg);
-            });
-            
-            // Limit to 30 boxes max
-            var count = Math.Min(activeList.Count, 30);
-            for (int i = 0; i < count; i++)
-                SpidBoxesPanel.Children.Add(CreateSpidBox(activeList[i]));
+            else
+            {
+                FilteredCountText.Text = "";
+            }
+
+
+            if (SPIDFilter.IsChecked == true )  
+            {
+                rel = allRelevant
+                    .Where(h => h.Status != null &&
+                          !( h.Status.IndexOf("sleeping", StringComparison.OrdinalIgnoreCase) >= 0))
+                    .ToList();
+
+                //FilteredCountText.Text = $"Showing {rel.Count} of {allRelevant.Count} sessions (filtered by '{_programFilter}')";
+            }
+            else
+            {
+                rel = allRelevant
+                        .Where(h => h.Status != null)
+                        .ToList();
+            }
+
+
+            const double boxWidth = 85;
+            const double boxHeight = 55;
+            const double margin = 8;
+            var canvasWidth = SpidBoxesCanvas.ActualWidth > 0 ? SpidBoxesCanvas.ActualWidth : 500;
+            var boxesPerRow = Math.Max(1, (int)((canvasWidth - margin) / (boxWidth + margin)));
+
+            int index = 0;
+            foreach (var sp in rel)
+            {
+                int row = index / boxesPerRow;
+                int col = index % boxesPerRow;
+                double x = margin + col * (boxWidth + margin);
+                double y = margin + row * (boxHeight + margin);
+
+                bool isBlocker = blockerSpids.Contains(sp.Spid);
+                bool isWaiting = waitSpids.Contains(sp.Spid);
+
+                var box = CreateSpidBox(sp, isBlocker, isWaiting, boxWidth);
+                Canvas.SetLeft(box, x);
+                Canvas.SetTop(box, y);
+     
+                SpidBoxesCanvas.Children.Add(box);
+
+                _spidBoxPositions[sp.Spid] = new Point(x + boxWidth / 2, y + boxHeight / 2);
+                _spidBoxBorders[sp.Spid] = box;
+
+                index++;
+            }
+
+            int totalRows = (rel.Count + boxesPerRow - 1) / boxesPerRow;
+            SpidBoxesCanvas.Height = Math.Max(200, totalRows * (boxHeight + margin) + margin);
+
+            DrawBlockingLines();
         }
 
-        private static readonly SolidColorBrush ActiveBg = new SolidColorBrush(Color.FromRgb(250,250,250));
-        private static readonly SolidColorBrush InactiveBg = new SolidColorBrush(Color.FromRgb(230,230,230));
-        private static readonly SolidColorBrush ActiveBorder = new SolidColorBrush(Color.FromRgb(0,120,212));
-        private static readonly SolidColorBrush InactiveBorder = new SolidColorBrush(Color.FromRgb(180,180,180));
-        private static readonly SolidColorBrush ActiveText = new SolidColorBrush(Colors.Black);
-        private static readonly SolidColorBrush InactiveText = new SolidColorBrush(Color.FromRgb(150,150,150));
-        private static readonly SolidColorBrush IoColor = new SolidColorBrush(Color.FromRgb(216,59,1));
-        private static readonly SolidColorBrush CpuColor = new SolidColorBrush(Color.FromRgb(0,120,212));
-        private static readonly SolidColorBrush GreyColor = new SolidColorBrush(Color.FromRgb(180,180,180));
-
-        static LiveMonitoringWindow()
+        private void DrawBlockingLines()
         {
-            ActiveBg.Freeze(); InactiveBg.Freeze(); ActiveBorder.Freeze(); InactiveBorder.Freeze();
-            ActiveText.Freeze(); InactiveText.Freeze(); IoColor.Freeze(); CpuColor.Freeze(); GreyColor.Freeze();
+            foreach (var blocking in _currentBlocking)
+            {
+                if (_spidBoxPositions.TryGetValue(blocking.WaitSpid, out var waitPos) &&
+                    _spidBoxPositions.TryGetValue(blocking.BlockerSpid, out var blockerPos))
+                {
+                    var line = new Line
+                    {
+                        X1 = waitPos.X,
+                        Y1 = waitPos.Y,
+                        X2 = blockerPos.X,
+                        Y2 = blockerPos.Y,
+                        Stroke = Brushes.Red,
+                        StrokeThickness = 2,
+                        StrokeDashArray = new DoubleCollection { 4, 2 }
+
+                    };
+
+                    SpidBoxesCanvas.Children.Insert(0, line);
+                    //Float lien above boxes
+                    Panel.SetZIndex(line, 1);
+
+
+                    // Draw Arrows, maybe too much for now
+                   //var angle = Math.Atan2(blockerPos.Y - waitPos.Y, blockerPos.X - waitPos.X);
+                   //var arrowLength = 10;
+                   //var arrowAngle = Math.PI / 6;
+                   //
+                   //var arrowX = blockerPos.X - 30 * Math.Cos(angle);
+                   //var arrowY = blockerPos.Y - 30 * Math.Sin(angle);
+                   //
+                   //var arrow = new Polygon
+                   //{
+                   //    Fill = Brushes.Red,
+                   //    Points = new PointCollection
+                   //    {
+                   //        new Point(arrowX, arrowY),
+                   //        new Point(arrowX - arrowLength * Math.Cos(angle - arrowAngle), arrowY - arrowLength * Math.Sin(angle - arrowAngle)),
+                   //        new Point(arrowX - arrowLength * Math.Cos(angle + arrowAngle), arrowY - arrowLength * Math.Sin(angle + arrowAngle))
+                   //    }
+                   //    
+                   //};
+                   //SpidBoxesCanvas.Children.Insert(0, arrow);
+                   //Panel.SetZIndex(arrow, 1);
+
+                }
+            }
         }
 
-        private Border CreateSpidBox(SpidHistory sp)
+        private Border CreateSpidBox(SpidHistory sp, bool isBlocker, bool isWaiting, double fixedWidth)
         {
-            var isGrey = !sp.IsActive || sp.InactiveTicks > 20;
-            var brd = new Border{
-                Width=90, Height=55,
-                Background = isGrey ? InactiveBg : ActiveBg,
-                BorderBrush = isGrey ? InactiveBorder : ActiveBorder,
-                BorderThickness=new Thickness(1),
-                CornerRadius=new CornerRadius(4),
-                Margin=new Thickness(3),
-                Padding=new Thickness(5)
+            var borderColor = isBlocker ? Colors.Red : (sp.IsActive ? Color.FromRgb(0, 120, 212) : Color.FromRgb(200, 200, 200));
+            var borderThickness = isBlocker ? 3 : (sp.IsActive ? 2 : 1);
+
+            var brd = new Border
+            {
+                Width = fixedWidth,
+                MinHeight = 50,
+                Background = new SolidColorBrush(isBlocker ? Color.FromRgb(255, 240, 240) : (sp.IsActive ? Color.FromRgb(250, 250, 250) : Color.FromRgb(240, 240, 240))),
+                BorderBrush = new SolidColorBrush(borderColor),
+                BorderThickness = new Thickness(borderThickness),
+                CornerRadius = new CornerRadius(4),
+                Margin = new Thickness(0),
+                Padding = new Thickness(6, 4, 6, 4)
             };
-            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            stack.Children.Add(new TextBlock{Text=$"SPID {sp.Spid}",FontSize=11,FontWeight=FontWeights.SemiBold,HorizontalAlignment=HorizontalAlignment.Center,Foreground=isGrey?InactiveText:ActiveText});
-            stack.Children.Add(new TextBlock{Text=$"I/O: {sp.IoMovingAvg:N0}",FontSize=9,Foreground=isGrey?GreyColor:IoColor,HorizontalAlignment=HorizontalAlignment.Center});
-            stack.Children.Add(new TextBlock{Text=$"CPU: {sp.CpuMovingAvg:N0}",FontSize=9,Foreground=isGrey?GreyColor:CpuColor,HorizontalAlignment=HorizontalAlignment.Center});
-            brd.Child = stack;
+
+            var g = new Grid();
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var hdrText = $"SPID {sp.Spid}";
+            if (isBlocker) hdrText += " 🔒";
+            if (isWaiting) hdrText += " ⏳";
+
+            var hdr = new TextBlock
+            {
+                Text = hdrText,
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(isBlocker ? Colors.Red : (sp.IsActive ? Colors.Black : Colors.Gray)),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            Grid.SetRow(hdr, 0);
+            g.Children.Add(hdr);
+
+            var lastCpuPct = sp.CpuHistory.LastOrDefault();
+            var cpuText = new TextBlock
+            {
+                Text = $"CPU: {lastCpuPct:F1}%",
+                FontSize = 10,
+                Foreground = new SolidColorBrush(Color.FromRgb(0, 120, 212)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            Grid.SetRow(cpuText, 1);
+            g.Children.Add(cpuText);
+
+            var lastIoPct = sp.IoHistory.LastOrDefault();
+            var ioText = new TextBlock
+            {
+                Text = $"I/O: {lastIoPct:F1}%",
+                FontSize = 10,
+                Foreground = new SolidColorBrush(Color.FromRgb(216, 59, 1)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 1, 0, 0)
+            };
+            Grid.SetRow(ioText, 2);
+            g.Children.Add(ioText);
+
+            brd.Child = g;
+
+            var tooltipText = BuildSpidTooltip(sp, isBlocker, isWaiting);
+            brd.ToolTip = new ToolTip
+            {
+                Content = new TextBlock
+                {
+                    Text = tooltipText,
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 11
+                },
+                Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
+                Foreground = Brushes.White,
+                Padding = new Thickness(10),
+                BorderThickness = new Thickness(0)
+            };
+
             return brd;
         }
 
-        protected override void OnClosed(EventArgs e) 
-        { 
-            StopMonitoring(); 
-            _gcTimer?.Stop();
-            _gcTimer = null;
-            Array.Clear(_spidHistories, 0, _spidHistories.Length);
-            _activeSpidSet.Clear();
-            _sessionsList.Clear();
-            foreach (var arr in _waitHistory.Values) Array.Clear(arr, 0, arr.Length);
-            _baselineWaits?.Clear();
-            _lastWaits.Clear();
-            GC.Collect(2, GCCollectionMode.Forced, true, true);
-            GC.WaitForPendingFinalizers();
-            base.OnClosed(e); 
+        private string BuildSpidTooltip(SpidHistory sp, bool isBlocker, bool isWaiting)
+        {
+            var lines = new List<string>
+            {
+                $"═══ SPID {sp.Spid} ═══",
+                "",
+                $"Database:    {(string.IsNullOrEmpty(sp.Database) ? "(none)" : sp.Database)}",
+                $"Status:      {sp.Status}",
+                $"Blocked by:  {sp.Blocked}",
+                $"Command:     {sp.Command}",
+                $"Login:       {sp.LoginName}",
+                $"Host:        {sp.Hostname}",
+                $"Program:     {(sp.ProgramName?.Length > 30 ? sp.ProgramName.Substring(0, 30) + "..." : sp.ProgramName)}",
+                $"Query:       {sp.text}",
+                "",
+                $"CPU (total): {sp.LastCpu:N0}",
+                $"I/O (total): {sp.LastIo:N0}",
+                $"Idle:        {FormatIdleTime(sp.IdleSeconds)}",
+                "",
+                "─── Recent Activity ───",
+                $"CPU %: {string.Join(" → ", sp.CpuHistory.Skip(Math.Max(0, sp.CpuHistory.Count - 5)).Select(v => v.ToString("F0")))}",
+                $"I/O %: {string.Join(" → ", sp.IoHistory.Skip(Math.Max(0, sp.IoHistory.Count - 5)).Select(v => v.ToString("F0")))}"
+            };
+
+            if (isBlocker)
+            {
+                lines.Add("");
+                lines.Add("⚠ THIS SESSION IS BLOCKING OTHERS");
+            }
+
+            if (isWaiting)
+            {
+                lines.Add("");
+                lines.Add("⏳ This session is WAITING (blocked)");
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private string FormatIdleTime(int seconds)
+        {
+            if (seconds < 60) return $"{seconds}s";
+            if (seconds < 3600) return $"{seconds / 60}m {seconds % 60}s";
+            return $"{seconds / 3600}h {(seconds % 3600) / 60}m";
+        }
+
+        // Program filter for Session Activity
+        private string _programFilter = "";
+        
+        private void ProgramFilterText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _programFilter = ProgramFilterText.Text?.Trim() ?? "";
+            UpdateSpidBoxes();
+        }
+
+        private void ClearProgramFilter_Click(object sender, RoutedEventArgs e)
+        {
+            ProgramFilterText.Text = "";
+            _programFilter = "";
+            UpdateSpidBoxes();
+        }
+
+
+        //ClearSPIDFilter
+        
+            private void ToggleSPIDFilter_Checked(object sender, RoutedEventArgs e)
+        {
+            SPIDFilter.Content = "Not Showing Sleeping SPIDs";
+            UpdateSpidBoxes();
+        }
+
+        private void ToggleSPIDFilter_Unchecked(object sender, RoutedEventArgs e)
+        {
+            SPIDFilter.Content = "Showing Sleeping SPIDs";
+            UpdateSpidBoxes();
+        }
+
+        private void ToggleSPIDFilter_ThirdState(object sender, RoutedEventArgs e)
+        {
+            SPIDFilter.Content = "Sleeping SPIDs";
+        }
+
+        //ClearSPIDFilter Sleeping on Activ
+
+
+
+        // View Query button handler
+        private void ViewQueryButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (TopQueriesGrid.SelectedItem is TopQueryItem selected)
+            {
+                var viewer = new CodeViewerWindow("Query Text", selected.QueryText);
+                viewer.Owner = this;
+                viewer.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Please select a query from the grid first.", "No Selection", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        // View Blocking Query button handler
+        private void ViewBlockingQueryButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (BlockingGrid.SelectedItem is BlockingInfo selected)
+            {
+                var viewer = new CodeViewerWindow("Query Text", selected.WaitStatement);
+                viewer.Owner = this;
+                viewer.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Please select a query from the grid first.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        
+
+        // Save Plan button handler
+
+
+        protected override void OnClosed(EventArgs e) { StopMonitoring(); base.OnClosed(e); }
+    }
+
+    public class ServerItem
+    {
+        public string ConnectionString { get; set; } = "";
+        public string ServerName { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public bool IsConnectable { get; set; }
+        public Brush TextColor { get; set; } = Brushes.Black;
+    }
+
+    public class WaitStatItem { public string WaitType { get; set; } = ""; public long WaitTimeMs { get; set; } public double Percentage { get; set; } public SolidColorBrush Color { get; set; } = new SolidColorBrush(Colors.Gray); }
+
+    public class SessionItem
+    {
+        public int Spid { get; set; }
+        public string Database { get; set; } = "";
+        public string Status { get; set; } = "";
+        public long Cpu { get; set; }
+        public long PhysicalIo { get; set; }
+        public string Hostname { get; set; } = "";
+        public string ProgramName { get; set; } = "";
+        public string LoginName { get; set; } = "";
+        public string Command { get; set; } = "";
+        public string text { get; set; } = "";
+        public string Blocked { get; set; } = "";
+        public int IdleSeconds { get; set; }
+    }
+
+    public class SpidHistory
+    {
+        public int Spid { get; set; }
+        public string Database { get; set; } = "";
+        public bool IsActive { get; set; }
+        public Queue<double> CpuHistory { get; } = new();
+        public Queue<double> IoHistory { get; } = new();
+
+        public string Hostname { get; set; } = "";
+        public string ProgramName { get; set; } = "";
+        public string LoginName { get; set; } = "";
+        public string Command { get; set; } = "";
+        public string text { get; set; } = "";
+
+        public string Blocked { get; set; } = "";
+        public string Status { get; set; } = "";
+        public int IdleSeconds { get; set; }
+        public long LastCpu { get; set; }
+        public long LastIo { get; set; }
+
+        public void AddSample(double c, double i)
+        {
+            CpuHistory.Enqueue(c);
+            IoHistory.Enqueue(i);
+            while (CpuHistory.Count > 30) CpuHistory.Dequeue();
+            while (IoHistory.Count > 30) IoHistory.Dequeue();
         }
     }
 
-    public class WaitStatItem { public string WaitType { get; set; } = ""; public long WaitTimeMs { get; set; } public double Percentage { get; set; } public SolidColorBrush Color { get; set; } = Brushes.Gray; }
-    public class SessionItem { public int Spid { get; set; } public string Database { get; set; } = ""; public string Status { get; set; } = ""; public long Cpu { get; set; } public long PhysicalIo { get; set; } public string Hostname { get; set; } = ""; public string ProgramName { get; set; } = ""; }
-    public class SpidHistory 
-    { 
-        public int Spid; 
-        public bool IsActive; 
-        public long LastCpu, LastIo;
-        public int InactiveTicks;
-        private readonly long[] _cpuSamples = new long[5];
-        private readonly long[] _ioSamples = new long[5];
-        private int _cpuIdx, _ioIdx, _cpuCount, _ioCount;
-        
-        public void AddCpuSample(long v) { _cpuSamples[_cpuIdx] = v; _cpuIdx = (_cpuIdx + 1) % 5; if (_cpuCount < 5) _cpuCount++; }
-        public void AddIoSample(long v) { _ioSamples[_ioIdx] = v; _ioIdx = (_ioIdx + 1) % 5; if (_ioCount < 5) _ioCount++; }
-        
-        public double CpuMovingAvg { get { if (_cpuCount == 0) return 0; long sum = 0; for (int i = 0; i < _cpuCount; i++) sum += _cpuSamples[i]; return sum / (double)_cpuCount; } }
-        public double IoMovingAvg { get { if (_ioCount == 0) return 0; long sum = 0; for (int i = 0; i < _ioCount; i++) sum += _ioSamples[i]; return sum / (double)_ioCount; } }
+    public class BlockingInfo
+    {
+        public string LockType { get; set; } = "";
+        public string DatabaseName { get; set; } = "";
+        public int WaitSpid { get; set; }
+        public int BlockerSpid { get; set; }
+        public long WaitDurationMs { get; set; }
+        public string WaitType { get; set; } = "";
+        public string WaitStatement { get; set; } = "";
+        public string BlockerStatement { get; set; } = "";
     }
+
+    public class TopQueryItem
+    {
+        public string Category { get; set; } = "";
+        public string Database { get; set; } = "";
+        public decimal TotalElapsedTimeS { get; set; }
+        public long ExecutionCount { get; set; }
+        public decimal TotalCpuTimeS { get; set; }
+        public long TotalLogicalReads { get; set; }
+        public long TotalLogicalWrites { get; set; }
+        public string QueryText { get; set; } = "";
+        public byte[]? PlanHandle { get; set; }
+    }
+
+   // public class Line
+   // {
+   //     X1 = 0,
+   //                 Y1 = yPos,
+   //                 X2 = graphWidth,
+   //                 Y2 = yPos,
+   //                 Stroke = Brushes.LightGray,
+   //                 StrokeThickness = 0.5,
+   //                 StrokeDashArray
+   //     public Geometry Geometry { get; set; }
+   //     public Brush Stroke { get; set; }
+   //     public int ZIndex { get; set; }
+   //     public double StrokeThickness { get; set; }
+   // }
 }

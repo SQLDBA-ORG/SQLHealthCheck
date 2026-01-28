@@ -2,12 +2,13 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SqlMonitorUI"
-        Title="SQL Server Health Monitor" 
+        Title="SQLDBA's SQL Server Health Monitor" 
         Height="800" 
-        Width="1400"
+        Width="1600"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="ToolWindow"
         Background="#F5F5F5">
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="60"/>
@@ -33,62 +34,69 @@
                 <StackPanel Orientation="Horizontal" 
                             HorizontalAlignment="Right" 
                             VerticalAlignment="Center">
+
                     <TextBox x:Name="ConnectionStringTextBox"
-                             Width="350"
-                             Margin="0,0,10,0"
+                             Width="257"
                              Padding="8"
                              FontSize="12"
                              VerticalContentAlignment="Center"
                              Text="Server=localhost;Database=master;Integrated Security=true;TrustServerCertificate=true;"/>
-                    
+
                     <Button x:Name="ConnectButton" 
                             Content="🔌 Connect" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ConnectButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Configure connection settings"/>
-                    
-                    <Button x:Name="ImportBlitzButton" 
-                            Content="📥 Import" 
-                            Style="{StaticResource ModernButtonStyle}"
-                            Click="ImportBlitzButton_Click"
-                            Margin="0,0,5,0"
-                            ToolTip="Import checks from sp_Blitz.sql or sp_triage.sql"/>
-                    
+                            ToolTip="Configure connection settings."/>
+
                     <Button x:Name="ManageChecksButton" 
                             Content="⚙️ Checks" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ManageChecksButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="View and edit all health checks"/>
-                    
+                            ToolTip="View and edit all health checks." IsEnabled="True"/>
+
                     <Button x:Name="ScriptManagerButton" 
                             Content="📜 Scripts" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ScriptManagerButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Manage diagnostic scripts (sp_Blitz, sp_triage, etc.)"/>
-                    
+                            ToolTip="Manage diagnostic scripts (sp_Blitz, sp_triage, etc.)" IsEnabled="True"/>
+
                     <Button x:Name="LiveMonitorButton" 
                             Content="📊 Live Monitor" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="LiveMonitorButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Real-time performance monitoring"/>
-                    
+                            ToolTip="Real-time performance monitoring."/>
+
                     <Button x:Name="RunChecksButton" 
-                            Content="🔄 Run Checks" 
+                            Content="🔄 Run Quick Checks" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="RunChecksButton_Click"
-                            Margin="0,0,5,0"/>
-                    
+                            Margin="0,0,5,0"
+                            ToolTip="Run a small set of tests to get a quick view of the server state."/>
+
                     <Button x:Name="RunCompleteHealthCheckButton" 
-                            Content="🏥 Full Check" 
+                            Content="🏥 Full Audit" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="RunCompleteHealthCheckButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Run all diagnostic scripts and export to CSV"/>
-                    
+                            ToolTip="Run all diagnostic scripts and export to CSV."/>
+                    <Button x:Name="UploadtoAzure" 
+                        Content="📤 Upload results" 
+                        Style="{StaticResource ModernButtonStyle}"
+                        Click="RunUploadtoAzureButton_Click"
+                        Margin="0,0,5,0"
+                        ToolTip="Secure upload of the results to SQLDBA for processing CSV." IsEnabled="False"
+                            Foreground="Gray"
+                         />
+                    <Button x:Name="AboutInfo" 
+                        Content="📖 About" 
+                        Style="{StaticResource ModernButtonStyle}"
+                        Click="AboutButton_Click"
+                        Margin="0,0,5,0"
+                        ToolTip="About this tool."/>
                     <Button x:Name="RefreshButton" 
                             Content="↻" 
                             Style="{StaticResource ModernButtonStyle}"
@@ -217,10 +225,10 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    
+
                     <!-- Categories Section -->
                     <TextBlock Grid.Row="0" Text="Categories" Style="{StaticResource HeaderTextStyle}"/>
-                    
+
                     <ListBox x:Name="CategoryListBox" 
                              Grid.Row="1"
                              BorderThickness="0"
@@ -267,10 +275,10 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    
+
                     <!-- Servers Section -->
                     <TextBlock Grid.Row="2" Text="Servers" Style="{StaticResource HeaderTextStyle}" Margin="0,15,0,0"/>
-                    
+
                     <ListBox x:Name="ServerListBox" 
                              Grid.Row="3"
                              BorderThickness="0"
@@ -373,7 +381,7 @@
                               BorderThickness="0"
                               CanUserResizeRows="False"
                               SelectionMode="Single">
-                        
+
                         <DataGrid.Resources>
                             <Style TargetType="DataGridColumnHeader">
                                 <Setter Property="Background" Value="#F0F0F0"/>
@@ -455,10 +463,11 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <!-- Source -->
+                            <!-- Source - Hidden -->
                             <DataGridTextColumn Header="Source" 
                                                 Binding="{Binding Source}" 
-                                                Width="100"
+                                                Width="0"
+                                                Visibility="Collapsed"
                                                 FontSize="11"
                                                 Foreground="#555555"/>
 
