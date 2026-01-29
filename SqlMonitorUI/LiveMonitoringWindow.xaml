@@ -18,6 +18,7 @@
                 <ColumnDefinition Width="59*"/>
                 <ColumnDefinition Width="853*"/>
             </Grid.ColumnDefinitions>
+
             <Grid.RowDefinitions>
                 <RowDefinition Height="125"/>
                 <!-- Header -->
@@ -124,7 +125,7 @@ ToolTip="Only show a maximum of this amount of sessions" Background="White" Vert
             </Border>
 
             <!-- Key Metrics Cards -->
-            <Grid Margin="15,50,15,0" Grid.ColumnSpan="4">
+            <Grid  Margin="15,50,15,0" Grid.ColumnSpan="4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
@@ -134,12 +135,8 @@ ToolTip="Only show a maximum of this amount of sessions" Background="White" Vert
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-
-
-                    
-                    
-                </Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
                     <StackPanel>
                         <TextBlock Text="CPU %" FontSize="11" Foreground="#666"/>
@@ -200,7 +197,96 @@ ToolTip="Only show a maximum of this amount of sessions" Background="White" Vert
                     </StackPanel>
                 </Border> 
             </Grid>
+        <Grid Margin="15,0,10,0" Grid.Row="1" Grid.ColumnSpan="4"  MinHeight="10">
+        </Grid>
+        <Grid Margin="15,0,10,0" Grid.Row="1" Grid.ColumnSpan="4"  MinHeight="25">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
 
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0" >
+                <StackPanel>
+                    <TextBlock Text="ServerName" FontSize="11" Foreground="White" />
+                    <TextBlock x:Name="ServerNameText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Build Nr" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="BuildNrText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Edition" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="EditionText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="3" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Estimated Annual Licensing" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="LicensingText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="4" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+            <StackPanel>
+                    <TextBlock Text="Version" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="VersionText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="5" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="CPU Sockets : Virtual CPUs" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="SocketsText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="6" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Server Memory GB" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="MemoryGBText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="7" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="SQL Allocated Memory GB" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="UsedbySQLGBText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="8" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="High-Availability" FontSize="11" Foreground="White"/>
+                    <TextBlock x:Name="HADRText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <!--
+                var r = dt.Rows[0];
+var sn = r["ServerName"];           ServerNameText
+var ed = r["Edition"];              EditionText
+var sckt =     Convert.ToInt32(r["Sockets"]);   SocketsText
+var cpus  = Convert.ToInt32(r["Virtual CPUs"]); VirtualCPUsText
+var vm  = r["VM Type"];
+var ram  = Convert.ToDouble(r["MemoryGB"]);     MemoryGBText
+var all = Convert.ToDouble(r["SQL Allocated"]);
+var usd = Convert.ToDouble(r["Used by SQL"]);   UsedbySQLGBText
+var ms = r["Memory State"]; 
+var vs = r["Version"];          VersionText
+var bld = r["BuildNr"];         BuildNrText
+var os = r["OS"];
+var ha = r["HADR"];             HADRText
+var sa = r["SA"];
+var lvl = r["Level"];
+                    
+                    -->
+            
+        </Grid>
 
             <Grid Grid.Row="2" Margin="15,0,15,0" Grid.ColumnSpan="4"  MinHeight="25">
                 <Grid.ColumnDefinitions>
@@ -434,7 +520,7 @@ ToolTip="View the full query text in a copyable window"/>
                     
                             <TextBlock Text="Top Usage Queries" FontSize="16" FontWeight="SemiBold" Grid.Row="0" Grid.Column="0"/>
                         <TextBlock x:Name="TopQueriesCountText" Width="50"  Grid.Row="0" Grid.Column="1" Text=" (refreshes every 30 ticks)" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        <Button x:Name="ViewBlockingQueryButton" Content="📋 View Query" Grid.Row="0" Grid.Column="2"
+                        <Button x:Name="ViewTopQueryButton" Content="📋 View Query" Grid.Row="0" Grid.Column="2"
                     Click="ViewQueryButton_Click"
                                     Width="50"
                     Padding="8,4" Margin="20,0,5,0"

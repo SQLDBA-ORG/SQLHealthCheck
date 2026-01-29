@@ -47,42 +47,42 @@
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ConnectButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Configure connection settings."/>
+                            ToolTip="Configure connection settings." Foreground="#FF57EE0C"/>
 
                     <Button x:Name="ManageChecksButton" 
                             Content="⚙️ Checks" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ManageChecksButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="View and edit all health checks." IsEnabled="True"/>
+                            ToolTip="View and edit all health checks." IsEnabled="True" Opacity="0.5"/>
 
                     <Button x:Name="ScriptManagerButton" 
                             Content="📜 Scripts" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ScriptManagerButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Manage diagnostic scripts (sp_Blitz, sp_triage, etc.)" IsEnabled="True"/>
+                            ToolTip="Manage diagnostic scripts (sp_Blitz, sp_triage, etc.)" IsEnabled="True" Opacity="0.5"/>
 
                     <Button x:Name="LiveMonitorButton" 
                             Content="📊 Live Monitor" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="LiveMonitorButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Real-time performance monitoring."/>
+                            ToolTip="Real-time performance monitoring." Foreground="#FF57EE0C"/>
 
                     <Button x:Name="RunChecksButton" 
                             Content="🔄 Run Quick Checks" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="RunChecksButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Run a small set of tests to get a quick view of the server state."/>
+                            ToolTip="Run a small set of tests to get a quick view of the server state." Foreground="#FFF9FE22"/>
 
                     <Button x:Name="RunCompleteHealthCheckButton" 
                             Content="🏥 Full Audit" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="RunCompleteHealthCheckButton_Click"
                             Margin="0,0,5,0"
-                            ToolTip="Run all diagnostic scripts and export to CSV."/>
+                            ToolTip="Run all diagnostic scripts and export to CSV." Foreground="#FF8FD9C7"/>
                     <Button x:Name="UploadtoAzure" 
                         Content="📤 Upload results" 
                         Style="{StaticResource ModernButtonStyle}"
