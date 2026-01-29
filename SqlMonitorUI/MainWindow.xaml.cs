@@ -151,7 +151,8 @@ namespace SqlMonitorUI
                     ResourceManager.SuggestCleanup();
                 }
             };
-
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Default, true, true);
+            GC.WaitForPendingFinalizers();
             _memoryMonitorTimer.Start();
         }
 
