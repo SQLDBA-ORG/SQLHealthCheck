@@ -94,7 +94,7 @@ ToolTip="Filter sessions by program name (case-insensitive)"/>
                         <!-- CheckBox to show/hide sleeping SPIDs -->
                         <CheckBox x:Name="SPIDFilter" Grid.Row="1" Margin="5,8,5,28" Height="26" VerticalAlignment="Center" 
 Content="Showing Sleeping SPIDs" IsThreeState="False"
-Checked="ToggleSPIDFilter_Checked" Unchecked="ToggleSPIDFilter_Unchecked" FontWeight="Bold" Foreground="white"
+Checked="ToggleSPIDFilter_Checked" Unchecked="ToggleSPIDFilter_Unchecked" FontWeight="Bold" Foreground="white" IsChecked="False"
  />
                     </Grid>
                     <Grid Grid.Column="8">
@@ -102,7 +102,7 @@ Checked="ToggleSPIDFilter_Checked" Unchecked="ToggleSPIDFilter_Unchecked" FontWe
 
                     </Grid>
                     <Grid Grid.Column="9">
-                        <TextBox x:Name="LimitSessionsText"  Text="50" TextAlignment="left" 
+                        <TextBox x:Name="LimitSessionsText"  Text="15" TextAlignment="left" 
 TextChanged="LimitSessions"
 ToolTip="Only show a maximum of this amount of sessions" Background="White" VerticalAlignment="Top" Margin="5,8,5,0" Height="26" VerticalContentAlignment="Center"/>
                     </Grid>
@@ -509,7 +509,7 @@ ToolTip="View the full query text in a copyable window"/>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="200"/>
                             <ColumnDefinition Width="50"/>
-                            <ColumnDefinition Width="50"/>
+                            <ColumnDefinition Width="150"/>
                             <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
@@ -518,11 +518,11 @@ ToolTip="View the full query text in a copyable window"/>
                         </Grid.RowDefinitions>
 
                     
-                            <TextBlock Text="Top Usage Queries" FontSize="16" FontWeight="SemiBold" Grid.Row="0" Grid.Column="0"/>
+                          <TextBlock Text="Top Usage Queries" FontSize="16" FontWeight="SemiBold" Grid.Row="0" Grid.Column="0"/>
                         <TextBlock x:Name="TopQueriesCountText" Width="50"  Grid.Row="0" Grid.Column="1" Text=" (refreshes every 30 ticks)" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="10,0,0,0"/>
                         <Button x:Name="ViewTopQueryButton" Content="📋 View Query" Grid.Row="0" Grid.Column="2"
                     Click="ViewQueryButton_Click"
-                                    Width="50"
+                                    Width="100"
                     Padding="8,4" Margin="20,0,5,0"
                     Background="#0078D4" Foreground="White" BorderThickness="0"
                     FontSize="11" Cursor="Hand"
