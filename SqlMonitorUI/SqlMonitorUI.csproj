@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+	 <TargetFrameworks>net8.0-windows;net462;net47;net48</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
@@ -26,6 +26,8 @@ Updated forms for modifying checks.
 Live monitoting update to include blocking queries.</PackageReleaseNotes>
     <AssemblyVersion>1.0.1.0</AssemblyVersion>
     <FileVersion>1.0.1.0</FileVersion>
+    <StartupObject>SqlMonitorUI.App</StartupObject>
+    <BaseOutputPath>C:\Users\afsul\OneDrive - sqldba.org\GitHub\SQLMonitoring_BUILD</BaseOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,10 +46,6 @@ Live monitoting update to include blocking queries.</PackageReleaseNotes>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SqlCheckLibrary\SqlCheckLibrary.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.*" />
     <PackageReference Include="System.Text.Json" Version="8.*" />
@@ -57,8 +55,26 @@ Live monitoting update to include blocking queries.</PackageReleaseNotes>
     <None Update="azcopy.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="script-configurations.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="scripts\Check_BP_Servers.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="scripts\sp_Blitz.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="scripts\SQLDBA.ORG.sp_triage.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="scripts\stpChecklist_Seguranca.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="sql-checks.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SqlHealthMonitor.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

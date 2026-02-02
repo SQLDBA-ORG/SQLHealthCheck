@@ -1,4 +1,4 @@
-IF OBJECT_ID('dbo.sqldba_stpSecurity_Checklis') IS NULL
+IF OBJECT_ID('dbo.sqldba_stpSecurity_Checklist') IS NULL
   EXEC ('CREATE PROCEDURE dbo.sqldba_stpSecurity_Checklist AS RETURN 0;');
 GO
 ALTER PROCEDURE dbo.sqldba_stpSecurity_Checklist (

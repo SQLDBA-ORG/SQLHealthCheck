@@ -17,12 +17,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
-using System.Windows.Forms;
+//using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using static System.Net.Mime.MediaTypeNames;
-using static System.Windows.Forms.AxHost;
+//using static System.Windows.Forms.AxHost;
 //using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 //using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
@@ -1482,7 +1482,9 @@ DECLARE @CPUcount INT;
                 _spidHistories[s.Spid].LastCpu = s.Cpu;
                 _spidHistories[s.Spid].LastIo = s.PhysicalIo;
             }
-            var active = sess.Select(x => x.Spid).ToHashSet();
+            //net48 var active = sess.Select(x => x.Spid).ToHashSet();
+            // To this:
+            var active = new HashSet<int>(sess.Select(x => x.Spid));
             foreach (var h in _spidHistories.Values) if (!active.Contains(h.Spid)) { h.IsActive = false; h.AddSample(0, 0); }
             SessionsGrid.ItemsSource = sess;
             SessionCountText.Text = $" ({sess.Count})";
@@ -1792,9 +1794,11 @@ DECLARE @CPUcount INT;
             _spidBoxPositions.Clear();
             _spidBoxBorders.Clear();
 
-            var blockerSpids = _currentBlocking.Select(b => b.BlockerSpid).ToHashSet();
-            var waitSpids = _currentBlocking.Select(b => b.WaitSpid).ToHashSet();
-
+            //net48 var blockerSpids = _currentBlocking.Select(b => b.BlockerSpid).ToHashSet();
+            //net48 var waitSpids = _currentBlocking.Select(b => b.WaitSpid).ToHashSet();
+            var blockerSpids = new HashSet<int>(_currentBlocking.Select(b => b.BlockerSpid));
+            var waitSpids = new HashSet<int>(_currentBlocking.Select(b => b.WaitSpid));
+    
             // Use virtualization or pagination for large datasets
             //var visibleData = spidData.Take(1000); // Limit to prevent UI lag 
 

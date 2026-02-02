@@ -5,7 +5,7 @@
     "Description": "Diagnostic script: sp_Blitz.sql",
     "ScriptPath": "sp_Blitz.sql",
     "ExecutionParameters": "EXEC [dbo].[sqldba_sp_Blitz] @CheckUserDatabaseObjects = 1 , @CheckProcedureCache = 1 , @OutputType = \u0027TABLE\u0027 , @OutputProcedureCache = 0 , @CheckProcedureCacheFilter = NULL, @CheckServerInfo = 1, @OutputDatabaseName = \u0027master\u0027, @OutputSchemaName = \u0027dbo\u0027, @OutputTableName = \u0027sqldba_sp_Blitz_output\u0027, @BringThePain = 1;",
-    "SqlQueryForOutput": "SELECT  ID, @ThisDomain [Domain],ServerName, CONVERT(VARCHAR,CheckDate,120), Priority, FindingsGroup, Finding, DatabaseName, URL, Details, CheckID FROM master.dbo.sqldba_sp_Blitz_output WHERE CheckDate = (SELEct max([CheckDate]) FROM master.dbo.sqldba_sp_Blitz_output);",
+    "SqlQueryForOutput": "DECLARE @ThisDomain NVARCHAR(100);\r\nEXEC master.dbo.xp_regread \u0027HKEY_LOCAL_MACHINE\u0027, \u0027SYSTEM\\CurrentControlSet\\services\\Tcpip\\Parameters\u0027, N\u0027Domain\u0027,@ThisDomain OUTPUT;\r\nSELECT  ID, @ThisDomain [Domain],ServerName, CONVERT(VARCHAR,CheckDate,120), Priority, FindingsGroup, Finding, DatabaseName, URL, Details, CheckID FROM master.dbo.sqldba_sp_Blitz_output WHERE CheckDate = (SELEct max([CheckDate]) FROM master.dbo.sqldba_sp_Blitz_output);",
     "Enabled": true,
     "TimeoutSeconds": 300,
     "Category": "Diagnostic",
@@ -22,7 +22,7 @@
     "Enabled": true,
     "TimeoutSeconds": 300,
     "Category": "Diagnostic",
-    "ExecutionOrder": 2,
+    "ExecutionOrder": 99,
     "ExportToCsv": true
   },
   {
