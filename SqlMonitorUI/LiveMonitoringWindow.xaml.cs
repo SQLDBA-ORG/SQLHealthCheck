@@ -1045,19 +1045,36 @@ DECLARE @CPUcount INT;
             EditionText.Text = ed;
             SocketsText.Text = sckt.ToString() + " : " + cpus.ToString();
 
+            // Developer
+            //Express
+            //Web
+            licensingRetailUSDServer = 0;
 
-            switch (ed)
+            if (ed.IndexOf("Standard") > 0)
             {
-                case "Enterprise":
-                    licensingRetailUSDServer = licensingRetailUSD * cpus / 2;
-                    break;
-                case "Standard":
-                    licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 / 3.832;
-                    break;
-                default:
-                    licensingRetailUSDServer = 0;
-                    break;
+                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 / 3.832;
             }
+            if (ed.IndexOf("Business") > 0)
+            {
+                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 ;
+            }
+            if (ed.IndexOf("Enterprise") > 0)
+            {
+                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2;
+            }
+
+           //switch (ed)
+           //{
+           //    case "Enterprise":
+           //        licensingRetailUSDServer = licensingRetailUSD * cpus / 2;
+           //        break;
+           //    case "Standard":
+           //        licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 / 3.832;
+           //        break;
+           //    default:
+           //        licensingRetailUSDServer = 0;
+           //        break;
+           //}
             LicensingText.Text = licensingRetailUSDServer.ToString("C0");
 
 

@@ -1,8 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-	 <TargetFrameworks>net8.0-windows;net462;net47;net48</TargetFrameworks>
+	 <TargetFrameworks>net8.0-windows;net462</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
@@ -17,10 +17,10 @@
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <Description>A SQL audit application with basic monitoring capabilities. This application also allows the upload of diagnostic audits to SQLDBA for processing.</Description>
-    <PackageProjectUrl></PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/SQLDBA-ORG/SQLHealthCheck</PackageProjectUrl>
     <RepositoryUrl>https://github.com/SQLDBA-ORG/SQLHealthCheck</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Update to use .NET 4.8 for backwards compatability with older SQL servers. 
+    <PackageReleaseNotes>Update to use .NET 4.6.2 for backwards compatability with older SQL servers. 
 Bugfixes on the monitoring scripts.
 Updated forms for modifying checks.
 Live monitoting update to include blocking queries.</PackageReleaseNotes>
@@ -28,6 +28,7 @@ Live monitoting update to include blocking queries.</PackageReleaseNotes>
     <FileVersion>1.0.1.0</FileVersion>
     <StartupObject>SqlMonitorUI.App</StartupObject>
     <BaseOutputPath>C:\Users\afsul\OneDrive - sqldba.org\GitHub\SQLMonitoring_BUILD</BaseOutputPath>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -46,8 +47,8 @@ Live monitoting update to include blocking queries.</PackageReleaseNotes>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.*" />
+
     <PackageReference Include="System.Text.Json" Version="8.*" />
   </ItemGroup>
 
@@ -78,4 +79,8 @@ Live monitoting update to include blocking queries.</PackageReleaseNotes>
     </None>
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="powershell -command &quot;&amp; {Add-Type -A 'System.IO.Compression.FileSystem'; [System.IO.Compression.ZipFile]::CreateFromDirectory('$(TargetDir)', '$(OutDir)..\..\..\SqlHealthMonitor-$(TargetFramework)-win-$(Platform).zip'), $true}&quot;" />
+  </Target>
+	
 </Project>

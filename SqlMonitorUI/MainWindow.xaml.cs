@@ -1,8 +1,13 @@
-using Azure;
-using Azure.Storage.Blobs;
+//* بسم الله الرحمن الرحيم  */
+//* In the name of God, the Merciful, the Compassionate */
+//
+//Welcome to sp_triage®
+//This script will grab a bunch of metrics from the SQL server, looping all instances on this machine and generate some outputs.
 
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
+using Azure;
+
+using Microsoft.Data.SqlClient;
+
 
 //using Microsoft.WindowsAzure.Storage;
 //using Microsoft.WindowsAzure.Storage.Auth;
@@ -13,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
@@ -512,7 +518,7 @@ namespace SqlMonitorUI
             }
 
             // Test all server connections first
-            var serverResults = new List<(string ConnectionString, string ServerName, bool IsOnline)>();
+            var serverResults = new List<(string ConnectionString, string ServerName, bool IsOnline, bool IsSYSADMIN, string LoginName)>();
             foreach (var connStr in _connectionStrings)
             {
                 string serverName;
@@ -520,7 +526,47 @@ namespace SqlMonitorUI
                 catch { serverName = "Unknown"; }
                 
                 var isOnline = await TestServerConnectionAsync(connStr);
-                serverResults.Add((connStr, serverName, isOnline));
+                //Check sysadmin before moving on
+
+
+
+
+                //string q = "SET NOCOUNT ON;" +
+                //"SELECT " +
+                //"[Build]" +
+                //", [OriginalLogin] " +
+                //",[UserName]" +
+                //", [AmIsysadmin];";
+
+                if (isOnline) {
+                    var admincheck = TestServerConnectionSYSADMINAsync(connStr);
+
+                    var LoginName = "";
+                    var UserName = "";
+                    var IsUserSysadmin = 0;
+
+                    foreach (DataRow row in admincheck.Rows)
+                    {
+
+                        LoginName = (string)row["OriginalLogin"];
+                        UserName = (string)row["UserName"];
+                        IsUserSysadmin = Convert.ToInt32(row["AmIsysadmin"]);
+                    }
+                        
+
+                        var IsSYSADMIN = false;
+                    if(IsUserSysadmin == 1)
+                        {
+                            IsSYSADMIN = true;
+                        }
+                        else
+                        {
+                            IsSYSADMIN = false;
+                    }
+                    TestServerConnectionSYSADMINAsync(connStr);
+                    serverResults.Add((connStr, serverName, isOnline, IsSYSADMIN, UserName));
+                }
+                
             }
 
             var onlineServers = serverResults.Where(s => s.IsOnline).ToList();
@@ -536,7 +582,7 @@ namespace SqlMonitorUI
             var serverStatusMessage = $"Server Status:\n";
             foreach (var srv in serverResults)
             {
-                serverStatusMessage += $"  {(srv.IsOnline ? "✅" : "❌")} {srv.ServerName}\n";
+                serverStatusMessage += $"  {(srv.IsOnline ? "✅" : "❌")} {srv.ServerName}, {srv.LoginName} sysadmin? {(srv.IsSYSADMIN ? "👍" : "❌")} \n";
             }
 
             var result = MessageBox.Show(
@@ -544,7 +590,9 @@ namespace SqlMonitorUI
                 serverStatusMessage + "\n" +
                 "Scripts to run:\n" +
                 string.Join("\n", enabledScripts.Select(s => $"• {s.Name}")) +
-                "\n\nResults will be exported to CSV in the output folder.\n\nContinue?",
+                "\n\nResults will be exported to CSV in the output folder." +
+                "\nThe user context ideally should be SYSADMIN, or things might fail."+
+                "\nObjects will be created in the MASTER database on each server.\n\nContinue?",
                 "Confirm Complete Health Check",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -553,6 +601,8 @@ namespace SqlMonitorUI
                 return;
 
             RunCompleteHealthCheckButton.IsEnabled = false;
+
+
 
             try
             {
@@ -633,6 +683,53 @@ namespace SqlMonitorUI
                 }
             });
         }
+        private  DataTable TestServerConnectionSYSADMINAsync(string connectionString)
+        {
+
+                    //public async Task<string> GetServerVersionAsync()
+        //{
+            using var connection = new SqlConnection(connectionString);
+            //await connection.OpenAsync();
+            using var command = new SqlCommand("SET NOCOUNT ON;" +
+                "SELECT " +
+                //"SERVERPROPERTY ('productversion') [Build]" +
+                //", SYSTEM_USER [CurrentLogin], ORIGINAL_LOGIN() [OriginalLogin] " +
+                //",SUSER_SNAME() [UserName]" +
+                " CASE WHEN (SELECT COUNT(1) FROM sys.server_role_members rm ,sys.server_principals sp WHERE rm.role_principal_id = SUSER_ID('Sysadmin') AND rm.member_principal_id = sp.principal_id AND name = SUSER_SNAME()) > 0 THEN 1 ELSE 0 END [AmIsysadmin];", connection);
+
+
+            string q = "SET NOCOUNT ON;" +
+                "SELECT " +
+                "SERVERPROPERTY ('productversion') [Build]" +
+                ", SYSTEM_USER [CurrentLogin], ORIGINAL_LOGIN() [OriginalLogin] " +
+                ",SUSER_SNAME() [UserName]" +
+                " ,CASE WHEN (SELECT COUNT(1) FROM sys.server_role_members rm ,sys.server_principals sp WHERE rm.role_principal_id = SUSER_ID('Sysadmin') AND rm.member_principal_id = sp.principal_id AND name = SUSER_SNAME()) > 0 THEN 1 ELSE 0 END [AmIsysadmin];";
+              using var cmd = new SqlCommand(q, connection) { CommandTimeout = 30 };
+              var dt = new DataTable();
+              try { new SqlDataAdapter(cmd).Fill(dt); } catch { /* Ignore empty sessions from filters */ }
+
+
+             return dt;
+
+
+
+
+            //try
+            //{
+            //    var result = await command.ExecuteScalarAsync();
+            //    if (result.ToString() == "1")
+            //{
+            //    return true;
+            //}
+            //else
+            //    return false;
+            //}
+            //catch
+            //{
+            //    return false;
+            //}
+        }
+
 
         private string SanitizeFileName(string name)
         {
