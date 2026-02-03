@@ -100,13 +100,13 @@ dotnet run
 *Health check results with severity indicators and category filtering*
 
 <!-- Add your screenshot here -->
-<!-- ![Main Dashboard](docs/screenshots/main-dashboard.png) -->
+![Main Dashboard](docs/screenshots/main-dashboard.png)
 
 ### Live Monitoring
 *Real-time performance metrics with wait statistics graph*
 
 <!-- Add your screenshot here -->
-<!-- ![Live Monitoring](docs/screenshots/live-monitor.png) -->
+![Live Monitoring](docs/screenshots/live-monitor.png)
 
 ### Multi-Server View
 *Enterprise view of multiple SQL Server instances*
