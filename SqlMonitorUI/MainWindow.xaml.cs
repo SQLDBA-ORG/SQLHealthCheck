@@ -130,15 +130,51 @@ namespace SqlMonitorUI
             if (_serverNames.Count == 0)
             {
                 ConnectionStringTextBox.Text = "";
+                StartLiveMonitorButton.IsEnabled = false;
             }
             else if (_serverNames.Count == 1)
             {
                 ConnectionStringTextBox.Text = _serverNames[0];
+                StartLiveMonitorButton.IsEnabled = true;
             }
             else
             {
                 ConnectionStringTextBox.Text = $"{_serverNames.Count} servers: {string.Join(", ", _serverNames.Take(3))}{(_serverNames.Count > 3 ? "..." : "")}";
+                StartLiveMonitorButton.IsEnabled = true;
             }
+        }
+
+        private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Optional: Handle tab changes if needed
+            if (e.Source != MainTabControl) return;
+
+            if (MainTabControl.SelectedItem == LiveMonitorTab)
+            {
+                // Update the Live Monitor tab state based on connection
+                if (_connectionStrings == null || !_connectionStrings.Any())
+                {
+                    StartLiveMonitorButton.IsEnabled = false;
+                }
+                else
+                {
+                    StartLiveMonitorButton.IsEnabled = true;
+                }
+            }
+        }
+
+        private void StartLiveMonitorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_connectionStrings == null || !_connectionStrings.Any())
+            {
+                MessageBox.Show("Please configure a server connection first using the Connect button.",
+                    "Connection Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Open the Live Monitor in a new window (since embedding is complex)
+            var monitor = new LiveMonitoringWindow(_connectionStrings);
+            monitor.Show();
         }
 
         private void StartMemoryMonitoring()
@@ -245,7 +281,6 @@ namespace SqlMonitorUI
             EmptyStatePanel.Visibility = Visibility.Collapsed;
             ResultsDataGrid.Visibility = Visibility.Collapsed;
             RunChecksButton.IsEnabled = false;
-            RefreshButton.IsEnabled = false;
 
             try
             {
@@ -279,7 +314,7 @@ namespace SqlMonitorUI
                 ClearCardHighlights();
 
                 var serverCount = _serverNames.Count;
-                LastUpdateText.Text = $"Last updated: {DateTime.Now:g} ({serverCount} server{(serverCount > 1 ? "s" : "")})";
+                LastUpdateText.Text = $" - Last updated: {DateTime.Now:g} ({serverCount} server{(serverCount > 1 ? "s" : "")})";
 
                 ResultsDataGrid.Visibility = Visibility.Visible;
             }
@@ -293,7 +328,6 @@ namespace SqlMonitorUI
             {
                 LoadingPanel.Visibility = Visibility.Collapsed;
                 RunChecksButton.IsEnabled = true;
-                RefreshButton.IsEnabled = true;
             }
         }
 

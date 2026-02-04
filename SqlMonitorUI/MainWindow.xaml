@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SqlMonitorUI"
         Title="SQLDBA's SQL Server Health Monitor" 
-        Height="800" 
+        Height="850" 
         Width="1600"
         WindowStartupLocation="CenterScreen"
         WindowStyle="ToolWindow"
@@ -11,24 +11,24 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="60"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="50"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!-- Header - Simplified -->
         <Border Grid.Row="0" Background="#0078D4">
-            <Grid Margin="20,0">
-                <StackPanel VerticalAlignment="Center">
+            <Grid Margin="15,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="SQL Server Health Monitor" 
-                               FontSize="22" 
+                               FontSize="20" 
                                FontWeight="SemiBold" 
                                Foreground="White"/>
                     <TextBlock x:Name="LastUpdateText" 
-                               Text="Last updated: Never" 
-                               FontSize="11" 
-                               Foreground="#E0E0E0" 
-                               Margin="0,2,0,0"/>
+                               Text=" - Ready" 
+                               FontSize="12" 
+                               Foreground="#C0C0C0" 
+                               VerticalAlignment="Center"
+                               Margin="10,0,0,0"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" 
@@ -36,9 +36,9 @@
                             VerticalAlignment="Center">
 
                     <TextBox x:Name="ConnectionStringTextBox"
-                             Width="257"
+                             Width="280"
                              Padding="8"
-                             FontSize="12"
+                             FontSize="11"
                              VerticalContentAlignment="Center"
                              Text="Server=localhost;Database=master;Integrated Security=true;TrustServerCertificate=true;"/>
 
@@ -46,479 +46,535 @@
                             Content="🔌 Connect" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ConnectButton_Click"
-                            Margin="0,0,5,0"
-                            ToolTip="Configure connection settings." Foreground="#FF57EE0C"/>
-
-                    <Button x:Name="ManageChecksButton" 
-                            Content="⚙️ Checks" 
-                            Style="{StaticResource ModernButtonStyle}"
-                            Click="ManageChecksButton_Click"
-                            Margin="0,0,5,0"
-                            ToolTip="View and edit all health checks." IsEnabled="True" Opacity="0.5"/>
+                            Margin="5,0,0,0"
+                            ToolTip="Configure connection settings"/>
 
                     <Button x:Name="ScriptManagerButton" 
-                            Content="📜 Scripts" 
+                            Content="⚙️ Config" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="ScriptManagerButton_Click"
-                            Margin="0,0,5,0"
-                            ToolTip="Manage diagnostic scripts (sp_Blitz, sp_triage, etc.)" IsEnabled="True" Opacity="0.5"/>
-
-                    <Button x:Name="LiveMonitorButton" 
-                            Content="📊 Live Monitor" 
-                            Style="{StaticResource ModernButtonStyle}"
-                            Click="LiveMonitorButton_Click"
-                            Margin="0,0,5,0"
-                            ToolTip="Real-time performance monitoring." Foreground="#FF57EE0C"/>
-
-                    <Button x:Name="RunChecksButton" 
-                            Content="🔄 Run Quick Checks" 
-                            Style="{StaticResource ModernButtonStyle}"
-                            Click="RunChecksButton_Click"
-                            Margin="0,0,5,0"
-                            ToolTip="Run a small set of tests to get a quick view of the server state." Foreground="#FFF9FE22"/>
+                            Margin="5,0,0,0"
+                            ToolTip="Manage scripts and live monitoring queries"/>
 
                     <Button x:Name="RunCompleteHealthCheckButton" 
                             Content="🏥 Full Audit" 
                             Style="{StaticResource ModernButtonStyle}"
                             Click="RunCompleteHealthCheckButton_Click"
-                            Margin="0,0,5,0"
-                            ToolTip="Run all diagnostic scripts and export to CSV." Foreground="#FF8FD9C7"/>
+                            Margin="5,0,0,0"
+                            ToolTip="Run all diagnostic scripts and export to CSV"/>
+
                     <Button x:Name="UploadtoAzure" 
-                        Content="📤 Upload results" 
-                        Style="{StaticResource ModernButtonStyle}"
-                        Click="RunUploadtoAzureButton_Click"
-                        Margin="0,0,5,0"
-                        ToolTip="Secure upload of the results to SQLDBA for processing CSV." IsEnabled="False"
-                            Foreground="Gray"
-                         />
-                    <Button x:Name="AboutInfo" 
-                        Content="📖 About" 
-                        Style="{StaticResource ModernButtonStyle}"
-                        Click="AboutButton_Click"
-                        Margin="0,0,5,0"
-                        ToolTip="About this tool."/>
-                    <Button x:Name="RefreshButton" 
-                            Content="↻" 
+                            Content="📤 Upload" 
                             Style="{StaticResource ModernButtonStyle}"
-                            Click="RunChecksButton_Click"
+                            Click="RunUploadtoAzureButton_Click"
+                            Margin="5,0,0,0"
+                            ToolTip="Upload results to SQLDBA" 
+                            IsEnabled="False"
+                            Foreground="Gray"/>
+
+                    <Button x:Name="AboutInfo" 
+                            Content="📖" 
+                            Style="{StaticResource ModernButtonStyle}"
+                            Click="AboutButton_Click"
                             Width="40"
-                            ToolTip="Refresh"/>
+                            Margin="5,0,0,0"
+                            ToolTip="About this tool"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Statistics Cards -->
-        <Grid Grid.Row="1" Margin="15,15,15,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
+        <!-- Main TabControl -->
+        <TabControl Grid.Row="1" x:Name="MainTabControl" Margin="10" SelectionChanged="MainTabControl_SelectionChanged">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Padding" Value="20,10"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Style>
+            </TabControl.Resources>
 
-            <!-- SQL Instances Card -->
-            <Border Grid.Column="0" Style="{StaticResource CardStyle}" 
-                    x:Name="InstancesCard" 
-                    MouseLeftButtonUp="InstancesCard_Click" 
-                    Cursor="Hand"
-                    ToolTip="Click to clear server filter">
-                <StackPanel>
-                    <TextBlock Text="INSTANCES" Style="{StaticResource StatLabelStyle}"/>
-                    <TextBlock x:Name="InstanceCountText" 
-                               Text="0" 
-                               Style="{StaticResource StatNumberStyle}"
-                               Foreground="#6B69D6"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Total Checks Card -->
-            <Border Grid.Column="1" Style="{StaticResource CardStyle}" 
-                    x:Name="TotalCard" 
-                    MouseLeftButtonUp="TotalCard_Click" 
-                    Cursor="Hand"
-                    ToolTip="Click to show all checks">
-                <StackPanel>
-                    <TextBlock Text="TOTAL CHECKS" Style="{StaticResource StatLabelStyle}"/>
-                    <TextBlock x:Name="TotalChecksText" 
-                               Text="0" 
-                               Style="{StaticResource StatNumberStyle}"
-                               Foreground="#444444"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Passed Card -->
-            <Border Grid.Column="2" Style="{StaticResource CardStyle}" 
-                    x:Name="PassedCard" 
-                    MouseLeftButtonUp="PassedCard_Click" 
-                    Cursor="Hand"
-                    ToolTip="Click to filter passed checks">
-                <StackPanel>
-                    <TextBlock Text="PASSED" Style="{StaticResource StatLabelStyle}"/>
-                    <TextBlock x:Name="PassedChecksText" 
-                               Text="0" 
-                               Style="{StaticResource StatNumberStyle}"
-                               Foreground="{StaticResource SuccessBrush}"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Critical Card -->
-            <Border Grid.Column="3" Style="{StaticResource CardStyle}" 
-                    x:Name="CriticalCard" 
-                    MouseLeftButtonUp="CriticalCard_Click" 
-                    Cursor="Hand"
-                    ToolTip="Click to filter critical issues">
-                <StackPanel>
-                    <TextBlock Text="CRITICAL" Style="{StaticResource StatLabelStyle}"/>
-                    <TextBlock x:Name="CriticalIssuesText" 
-                               Text="0" 
-                               Style="{StaticResource StatNumberStyle}"
-                               Foreground="{StaticResource CriticalBrush}"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Warning Card -->
-            <Border Grid.Column="4" Style="{StaticResource CardStyle}" 
-                    x:Name="WarningCard" 
-                    MouseLeftButtonUp="WarningCard_Click" 
-                    Cursor="Hand"
-                    ToolTip="Click to filter warnings">
-                <StackPanel>
-                    <TextBlock Text="WARNING" Style="{StaticResource StatLabelStyle}"/>
-                    <TextBlock x:Name="WarningIssuesText" 
-                               Text="0" 
-                               Style="{StaticResource StatNumberStyle}"
-                               Foreground="{StaticResource WarningBrush}"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Info Card -->
-            <Border Grid.Column="5" Style="{StaticResource CardStyle}" 
-                    x:Name="InfoCard" 
-                    MouseLeftButtonUp="InfoCard_Click" 
-                    Cursor="Hand"
-                    ToolTip="Click to filter info items">
-                <StackPanel>
-                    <TextBlock Text="INFO" Style="{StaticResource StatLabelStyle}"/>
-                    <TextBlock x:Name="InfoIssuesText" 
-                               Text="0" 
-                               Style="{StaticResource StatNumberStyle}"
-                               Foreground="{StaticResource InfoBrush}"/>
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <!-- Main Content Area -->
-        <Grid Grid.Row="2" Margin="15,0,15,15">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="250"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Filter Sidebar -->
-            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,5,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Categories Section -->
-                    <TextBlock Grid.Row="0" Text="Categories" Style="{StaticResource HeaderTextStyle}"/>
-
-                    <ListBox x:Name="CategoryListBox" 
-                             Grid.Row="1"
-                             BorderThickness="0"
-                             Background="Transparent"
-                             SelectionChanged="CategoryListBox_SelectionChanged"
-                             MaxHeight="200">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="Padding" Value="10"/>
-                                <Setter Property="Margin" Value="0,2"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListBoxItem">
-                                            <Border x:Name="Border" 
-                                                    Background="Transparent" 
-                                                    CornerRadius="3"
-                                                    Padding="{TemplateBinding Padding}">
-                                                <ContentPresenter/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsSelected" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#E3F2FD"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#F5F5F5"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="{Binding Color}" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{Binding Name}" FontSize="13"/>
-                                    <TextBlock Text="{Binding Count}" 
-                                               FontSize="11" 
-                                               Foreground="#888" 
-                                               Margin="5,0,0,0"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-
-                    <!-- Servers Section -->
-                    <TextBlock Grid.Row="2" Text="Servers" Style="{StaticResource HeaderTextStyle}" Margin="0,15,0,0"/>
-
-                    <ListBox x:Name="ServerListBox" 
-                             Grid.Row="3"
-                             BorderThickness="0"
-                             Background="Transparent"
-                             SelectionChanged="ServerListBox_SelectionChanged"
-                             MaxHeight="200">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="Padding" Value="10"/>
-                                <Setter Property="Margin" Value="0,2"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListBoxItem">
-                                            <Border x:Name="Border" 
-                                                    Background="Transparent" 
-                                                    CornerRadius="3"
-                                                    Padding="{TemplateBinding Padding}">
-                                                <ContentPresenter/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsSelected" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#EDE7F6"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#F5F5F5"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="{Binding Color}" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{Binding Name}" FontSize="13"/>
-                                    <TextBlock Text="{Binding Count}" 
-                                               FontSize="11" 
-                                               Foreground="#888" 
-                                               Margin="5,0,0,0"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
-
-            <!-- Results Display -->
-            <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="5,0,0,0">
+            <!-- Tab 1: Quick Checks -->
+            <TabItem Header="🔄 Quick Checks" x:Name="QuickChecksTab">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Header with Search -->
-                    <Grid Grid.Row="0" Margin="0,0,0,15">
-                        <TextBlock Text="Check Results" Style="{StaticResource HeaderTextStyle}"/>
-                        <TextBox x:Name="SearchTextBox"
-                                 Width="250"
-                                 HorizontalAlignment="Right"
-                                 Padding="8"
-                                 FontSize="12"
-                                 TextChanged="SearchTextBox_TextChanged"
-                                 VerticalContentAlignment="Center">
-                            <TextBox.Style>
-                                <Style TargetType="TextBox">
-                                    <Style.Triggers>
-                                        <Trigger Property="Text" Value="">
-                                            <Setter Property="Background">
-                                                <Setter.Value>
-                                                    <VisualBrush Stretch="None" AlignmentX="Left">
-                                                        <VisualBrush.Visual>
-                                                            <TextBlock Text="🔍 Search checks..." 
-                                                                       Foreground="#AAAAAA" 
-                                                                       Margin="8,0,0,0"
-                                                                       FontSize="12"/>
-                                                        </VisualBrush.Visual>
-                                                    </VisualBrush>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBox.Style>
-                        </TextBox>
+                    <!-- Statistics Cards -->
+                    <Grid Grid.Row="0" Margin="5,10,5,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- SQL Instances Card -->
+                        <Border Grid.Column="0" Style="{StaticResource CardStyle}" 
+                                x:Name="InstancesCard" 
+                                MouseLeftButtonUp="InstancesCard_Click" 
+                                Cursor="Hand"
+                                ToolTip="Click to clear server filter">
+                            <StackPanel>
+                                <TextBlock Text="INSTANCES" Style="{StaticResource StatLabelStyle}"/>
+                                <TextBlock x:Name="InstanceCountText" 
+                                           Text="0" 
+                                           Style="{StaticResource StatNumberStyle}"
+                                           Foreground="#6B69D6"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Total Checks Card -->
+                        <Border Grid.Column="1" Style="{StaticResource CardStyle}" 
+                                x:Name="TotalCard" 
+                                MouseLeftButtonUp="TotalCard_Click" 
+                                Cursor="Hand"
+                                ToolTip="Click to show all checks">
+                            <StackPanel>
+                                <TextBlock Text="TOTAL" Style="{StaticResource StatLabelStyle}"/>
+                                <TextBlock x:Name="TotalChecksText" 
+                                           Text="0" 
+                                           Style="{StaticResource StatNumberStyle}"
+                                           Foreground="#444444"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Passed Card -->
+                        <Border Grid.Column="2" Style="{StaticResource CardStyle}" 
+                                x:Name="PassedCard" 
+                                MouseLeftButtonUp="PassedCard_Click" 
+                                Cursor="Hand"
+                                ToolTip="Click to filter passed checks">
+                            <StackPanel>
+                                <TextBlock Text="PASSED" Style="{StaticResource StatLabelStyle}"/>
+                                <TextBlock x:Name="PassedChecksText" 
+                                           Text="0" 
+                                           Style="{StaticResource StatNumberStyle}"
+                                           Foreground="{StaticResource SuccessBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Critical Card -->
+                        <Border Grid.Column="3" Style="{StaticResource CardStyle}" 
+                                x:Name="CriticalCard" 
+                                MouseLeftButtonUp="CriticalCard_Click" 
+                                Cursor="Hand"
+                                ToolTip="Click to filter critical issues">
+                            <StackPanel>
+                                <TextBlock Text="CRITICAL" Style="{StaticResource StatLabelStyle}"/>
+                                <TextBlock x:Name="CriticalIssuesText" 
+                                           Text="0" 
+                                           Style="{StaticResource StatNumberStyle}"
+                                           Foreground="{StaticResource CriticalBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Warning Card -->
+                        <Border Grid.Column="4" Style="{StaticResource CardStyle}" 
+                                x:Name="WarningCard" 
+                                MouseLeftButtonUp="WarningCard_Click" 
+                                Cursor="Hand"
+                                ToolTip="Click to filter warnings">
+                            <StackPanel>
+                                <TextBlock Text="WARNING" Style="{StaticResource StatLabelStyle}"/>
+                                <TextBlock x:Name="WarningIssuesText" 
+                                           Text="0" 
+                                           Style="{StaticResource StatNumberStyle}"
+                                           Foreground="{StaticResource WarningBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Info Card -->
+                        <Border Grid.Column="5" Style="{StaticResource CardStyle}" 
+                                x:Name="InfoCard" 
+                                MouseLeftButtonUp="InfoCard_Click" 
+                                Cursor="Hand"
+                                ToolTip="Click to filter info items">
+                            <StackPanel>
+                                <TextBlock Text="INFO" Style="{StaticResource StatLabelStyle}"/>
+                                <TextBlock x:Name="InfoIssuesText" 
+                                           Text="0" 
+                                           Style="{StaticResource StatNumberStyle}"
+                                           Foreground="{StaticResource InfoBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Run Button -->
+                        <Button Grid.Column="6" 
+                                x:Name="RunChecksButton"
+                                Content="▶ Run Checks" 
+                                Click="RunChecksButton_Click"
+                                Background="#107C10"
+                                Foreground="White"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Padding="20,15"
+                                Margin="10,5,5,5"
+                                BorderThickness="0"
+                                Cursor="Hand"/>
                     </Grid>
 
-                    <!-- DataGrid Results -->
-                    <DataGrid Grid.Row="1"
-                              x:Name="ResultsDataGrid"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              GridLinesVisibility="None"
-                              HeadersVisibility="Column"
-                              RowHeight="45"
-                              AlternatingRowBackground="#FAFAFA"
-                              BorderThickness="0"
-                              CanUserResizeRows="False"
-                              SelectionMode="Single">
+                    <!-- Main Content Area -->
+                    <Grid Grid.Row="1" Margin="5,5,5,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="220"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                        <DataGrid.Resources>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#F0F0F0"/>
-                                <Setter Property="Foreground" Value="#333333"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                                <Setter Property="Padding" Value="10"/>
-                                <Setter Property="Height" Value="40"/>
-                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                <Setter Property="BorderBrush" Value="#DDDDDD"/>
-                            </Style>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="BorderThickness" Value="0"/>
-                                <Setter Property="Padding" Value="10,0"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Background" Value="#E3F2FD"/>
-                                        <Setter Property="Foreground" Value="#000000"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGrid.Resources>
+                        <!-- Filter Sidebar -->
+                        <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,5,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
 
-                        <DataGrid.Columns>
-                            <!-- Status Indicator -->
-                            <DataGridTemplateColumn Header="" Width="50">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Ellipse Width="14" Height="14" Fill="{Binding StatusColor}"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
+                                <!-- Categories Section -->
+                                <TextBlock Grid.Row="0" Text="Categories" Style="{StaticResource HeaderTextStyle}"/>
 
-                            <!-- Server Name -->
-                            <DataGridTextColumn Header="Server" 
-                                                Binding="{Binding ServerName}" 
-                                                Width="120"
-                                                FontSize="12"
-                                                FontWeight="Medium"/>
+                                <ListBox x:Name="CategoryListBox" 
+                                         Grid.Row="1"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         SelectionChanged="CategoryListBox_SelectionChanged"
+                                         MaxHeight="180"
+                                         VirtualizingStackPanel.IsVirtualizing="True"
+                                         VirtualizingStackPanel.VirtualizationMode="Recycling">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="8"/>
+                                            <Setter Property="Margin" Value="0,2"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="Border" 
+                                                                Background="Transparent" 
+                                                                CornerRadius="3"
+                                                                Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter TargetName="Border" Property="Background" Value="#E3F2FD"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Border" Property="Background" Value="#F5F5F5"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontSize="12"/>
+                                                <TextBlock Text="{Binding Count, StringFormat=' ({0})'}" 
+                                                           Foreground="#888888" FontSize="11"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
 
-                            <!-- Check Name -->
-                            <DataGridTextColumn Header="Check Name" 
-                                                Binding="{Binding CheckName}" 
-                                                Width="*"
-                                                FontSize="13"
-                                                FontWeight="Medium"/>
+                                <!-- Servers Section -->
+                                <TextBlock Grid.Row="2" Text="Servers" Style="{StaticResource HeaderTextStyle}" Margin="0,10,0,0"/>
 
-                            <!-- Category -->
-                            <DataGridTextColumn Header="Category" 
-                                                Binding="{Binding Category}" 
-                                                Width="120"
-                                                FontSize="12"/>
+                                <ListBox x:Name="ServerListBox" 
+                                         Grid.Row="3"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         SelectionChanged="ServerListBox_SelectionChanged"
+                                         MaxHeight="180"
+                                         VirtualizingStackPanel.IsVirtualizing="True"
+                                         VirtualizingStackPanel.VirtualizationMode="Recycling">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="8"/>
+                                            <Setter Property="Margin" Value="0,2"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="Border" 
+                                                                Background="Transparent" 
+                                                                CornerRadius="3"
+                                                                Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter TargetName="Border" Property="Background" Value="#E3F2FD"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Border" Property="Background" Value="#F5F5F5"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontSize="12"/>
+                                                <TextBlock Text="{Binding Count, StringFormat=' ({0})'}" 
+                                                           Foreground="#888888" FontSize="11"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
 
-                            <!-- Severity -->
-                            <DataGridTemplateColumn Header="Severity" Width="100">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{Binding SeverityBackground}" 
-                                                CornerRadius="3" 
-                                                Padding="8,4">
-                                            <TextBlock Text="{Binding Severity}" 
-                                                       Foreground="White" 
-                                                       FontSize="11" 
-                                                       FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
+                        <!-- Results Area -->
+                        <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="5,0,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
 
-                            <!-- Status -->
-                            <DataGridTemplateColumn Header="Status" Width="100">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Status}" 
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{Binding StatusColor}"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
+                                <!-- Results Header -->
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <TextBlock Text="Check Results" 
+                                               Style="{StaticResource HeaderTextStyle}"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox x:Name="SearchTextBox" 
+                                             Width="250" 
+                                             HorizontalAlignment="Right"
+                                             Padding="8"
+                                             FontSize="12"
+                                             TextChanged="SearchTextBox_TextChanged"
+                                             VerticalContentAlignment="Center">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox">
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value="">
+                                                        <Setter Property="Background">
+                                                            <Setter.Value>
+                                                                <VisualBrush Stretch="None" AlignmentX="Left">
+                                                                    <VisualBrush.Visual>
+                                                                        <TextBlock Text="🔍 Search checks..." 
+                                                                                   Foreground="#AAAAAA" 
+                                                                                   Margin="8,0,0,0"
+                                                                                   FontSize="12"/>
+                                                                    </VisualBrush.Visual>
+                                                                </VisualBrush>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                </Grid>
 
-                            <!-- Source - Hidden -->
-                            <DataGridTextColumn Header="Source" 
-                                                Binding="{Binding Source}" 
-                                                Width="0"
-                                                Visibility="Collapsed"
-                                                FontSize="11"
-                                                Foreground="#555555"/>
+                                <!-- DataGrid Results -->
+                                <DataGrid Grid.Row="1"
+                                          x:Name="ResultsDataGrid"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          GridLinesVisibility="None"
+                                          HeadersVisibility="Column"
+                                          RowHeight="40"
+                                          AlternatingRowBackground="#FAFAFA"
+                                          BorderThickness="0"
+                                          CanUserResizeRows="False"
+                                          SelectionMode="Single"
+                                          EnableRowVirtualization="True"
+                                          EnableColumnVirtualization="True"
+                                          VirtualizingStackPanel.IsVirtualizing="True"
+                                          VirtualizingStackPanel.VirtualizationMode="Recycling">
 
-                            <!-- Message -->
-                            <DataGridTextColumn Header="Details" 
-                                                Binding="{Binding Message}" 
-                                                Width="2*"
-                                                FontSize="11"
-                                                Foreground="#555555"/>
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="Background" Value="#F0F0F0"/>
+                                            <Setter Property="Foreground" Value="#333333"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8"/>
+                                            <Setter Property="Height" Value="35"/>
+                                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                            <Setter Property="BorderBrush" Value="#DDDDDD"/>
+                                        </Style>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Padding" Value="8,0"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter Property="Background" Value="#E3F2FD"/>
+                                                    <Setter Property="Foreground" Value="#000000"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.Resources>
 
-                            <!-- Executed At -->
-                            <DataGridTextColumn Header="Checked" 
-                                                Binding="{Binding ExecutedAtFormatted}" 
-                                                Width="140"
-                                                FontSize="11"
-                                                Foreground="#777777"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="" Width="40">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Ellipse Width="12" Height="12" Fill="{Binding StatusColor}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
 
-                    <!-- Empty State -->
-                    <StackPanel Grid.Row="1" 
-                                x:Name="EmptyStatePanel"
-                                VerticalAlignment="Center" 
-                                HorizontalAlignment="Center"
-                                Visibility="Collapsed">
-                        <TextBlock Text="📊" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                        <TextBlock Text="No checks have been run yet" 
-                                   FontSize="16" 
-                                   Foreground="#888888"
+                                        <DataGridTextColumn Header="Server" 
+                                                            Binding="{Binding ServerName}" 
+                                                            Width="100"
+                                                            FontSize="11"/>
+
+                                        <DataGridTextColumn Header="Check Name" 
+                                                            Binding="{Binding CheckName}" 
+                                                            Width="*"
+                                                            FontSize="12"
+                                                            FontWeight="Medium"/>
+
+                                        <DataGridTextColumn Header="Category" 
+                                                            Binding="{Binding Category}" 
+                                                            Width="100"
+                                                            FontSize="11"/>
+
+                                        <DataGridTemplateColumn Header="Severity" Width="80">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{Binding SeverityBackground}" 
+                                                            CornerRadius="3" 
+                                                            Padding="6,2">
+                                                        <TextBlock Text="{Binding Severity}" 
+                                                                   Foreground="White" 
+                                                                   FontSize="10" 
+                                                                   FontWeight="SemiBold"
+                                                                   HorizontalAlignment="Center"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Status" Width="80">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Status}" 
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{Binding StatusColor}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTextColumn Header="Details" 
+                                                            Binding="{Binding Message}" 
+                                                            Width="2*"
+                                                            FontSize="11"
+                                                            Foreground="#555555"/>
+
+                                        <DataGridTextColumn Header="Checked" 
+                                                            Binding="{Binding ExecutedAtFormatted}" 
+                                                            Width="120"
+                                                            FontSize="10"
+                                                            Foreground="#777777"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- Empty State -->
+                                <StackPanel Grid.Row="1" 
+                                            x:Name="EmptyStatePanel"
+                                            VerticalAlignment="Center" 
+                                            HorizontalAlignment="Center"
+                                            Visibility="Collapsed">
+                                    <TextBlock Text="📊" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                    <TextBlock Text="No checks have been run yet" 
+                                               FontSize="16" 
+                                               Foreground="#888888"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Click 'Run Checks' to start monitoring" 
+                                               FontSize="12" 
+                                               Foreground="#AAAAAA"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,5,0,0"/>
+                                </StackPanel>
+
+                                <!-- Loading Indicator -->
+                                <StackPanel Grid.Row="1"
+                                            x:Name="LoadingPanel"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            Visibility="Collapsed">
+                                    <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Running health checks..." 
+                                               FontSize="16" 
+                                               Foreground="#888888"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab 2: Live Monitor -->
+            <TabItem Header="📊 Live Monitor" x:Name="LiveMonitorTab">
+                <Grid x:Name="LiveMonitorContainer">
+                    <!-- Live Monitor content will be embedded here -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" x:Name="LiveMonitorPlaceholder">
+                        <TextBlock Text="📊" FontSize="64" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                        <TextBlock Text="Live Monitor" 
+                                   FontSize="20" 
+                                   FontWeight="SemiBold"
+                                   Foreground="#333333"
                                    HorizontalAlignment="Center"/>
-                        <TextBlock Text="Click 'Run Checks' to start monitoring" 
-                                   FontSize="12" 
-                                   Foreground="#AAAAAA"
+                        <TextBlock Text="Connect to a server to enable live monitoring" 
+                                   FontSize="13" 
+                                   Foreground="#888888"
                                    HorizontalAlignment="Center"
-                                   Margin="0,5,0,0"/>
-                    </StackPanel>
-
-                    <!-- Loading Indicator -->
-                    <StackPanel Grid.Row="1"
-                                x:Name="LoadingPanel"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Center"
-                                Visibility="Collapsed">
-                        <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                        <TextBlock Text="Running health checks..." 
-                                   FontSize="16" 
-                                   Foreground="#888888"
-                                   HorizontalAlignment="Center"/>
+                                   Margin="0,10,0,20"/>
+                        <Button x:Name="StartLiveMonitorButton"
+                                Content="▶ Start Live Monitor"
+                                Click="StartLiveMonitorButton_Click"
+                                Background="#0078D4"
+                                Foreground="White"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Padding="25,12"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                IsEnabled="False"/>
                     </StackPanel>
                 </Grid>
-            </Border>
-        </Grid>
+            </TabItem>
+
+            <!-- Tab 3: Manage Checks (optional - can be accessed from button too) -->
+            <TabItem Header="⚙️ Manage Checks" x:Name="ManageChecksTab" Visibility="Collapsed">
+                <Grid x:Name="ManageChecksContainer">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="⚙️" FontSize="64" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                        <TextBlock Text="Check Manager" 
+                                   FontSize="20" 
+                                   FontWeight="SemiBold"
+                                   Foreground="#333333"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="View and edit health check definitions" 
+                                   FontSize="13" 
+                                   Foreground="#888888"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,10,0,20"/>
+                        <Button x:Name="OpenCheckManagerButton"
+                                Content="Open Check Manager"
+                                Click="ManageChecksButton_Click"
+                                Background="#6B69D6"
+                                Foreground="White"
+                                FontSize="14"
+                                Padding="25,12"
+                                BorderThickness="0"
+                                Cursor="Hand"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>

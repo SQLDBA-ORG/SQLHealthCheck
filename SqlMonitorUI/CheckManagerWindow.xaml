@@ -171,7 +171,12 @@
                   BorderBrush="#CCCCCC"
                   BorderThickness="1"
                   FontSize="12"
-                  CellEditEnding="ChecksDataGrid_CellEditEnding">
+                  CellEditEnding="ChecksDataGrid_CellEditEnding"
+                  EnableRowVirtualization="True"
+                  EnableColumnVirtualization="True"
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                  ScrollViewer.IsDeferredScrollingEnabled="True">
             
             <DataGrid.Columns>
                 <!-- Enabled Checkbox -->

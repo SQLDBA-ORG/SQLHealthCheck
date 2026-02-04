@@ -66,9 +66,12 @@ namespace SqlMonitorUI
         private long _lastBatchReq, _lastTrans, _lastComp, _lastReads, _lastWrites, _lastPoisonWaits, _lastPoisonWaitSerializable, _lastPoisonWaitCMEM;
         private DateTime _lastSampleTime = DateTime.MinValue;
         private int _tickCount = 0;
-        private int TopSessions = 20;
         private Boolean ShowSleepingSPIDs = true;
         private string _programFilter = "";
+        private int TopSessions = 15;
+
+        // Configuration - loaded from LiveMonitoring.config
+        private readonly LiveMonitoringConfig _config;
 
         private const int MaxHistoryPoints = 120;
         private readonly Dictionary<string, Queue<long>> _waitHistory = new(); // Changed to long for values
@@ -172,8 +175,27 @@ namespace SqlMonitorUI
             foreach (var key in _waitColors.Keys) _waitHistory[key] = new Queue<long>();
             BuildLegend();
 
+            // Load configuration
+            _config = LiveMonitoringConfig.Instance;
+            _config.ConfigReloaded += Config_ConfigReloaded;
+
             // Test connections and populate server dropdown
             Loaded += async (s, e) => await TestAndPopulateServersAsync();
+        }
+
+        private void Config_ConfigReloaded(object? sender, EventArgs e)
+        {
+            // Config file changed - update on UI thread
+            Dispatcher.Invoke(() =>
+            {
+                StatusText.Text = "Configuration reloaded - queries updated";
+
+                // Update timer interval if changed
+                if (_refreshTimer != null && _refreshTimer.Interval.TotalMilliseconds != _config.RefreshIntervalMs)
+                {
+                    _refreshTimer.Interval = TimeSpan.FromMilliseconds(_config.RefreshIntervalMs);
+                }
+            });
         }
 
         private async System.Threading.Tasks.Task TestAndPopulateServersAsync()
@@ -395,9 +417,9 @@ namespace SqlMonitorUI
             try
             {
                 _tickCount++;
-                var shouldRefreshTopQueries = _tickCount % 30 == 0 || _tickCount == 1;
-                var shouldRefreshServerDetails = _tickCount % 60 == 0 || _tickCount == 1;
-                var shouldRefreshDriveLatency = _tickCount % 30 == 0 || _tickCount == 1;
+                var shouldRefreshTopQueries = _tickCount % _config.TopQueriesRefreshInterval == 0 || _tickCount == 1;
+                var shouldRefreshServerDetails = _tickCount % _config.ServerDetailsRefreshInterval == 0 || _tickCount == 1;
+                var shouldRefreshDriveLatency = _tickCount % _config.DriveLatencyRefreshInterval == 0 || _tickCount == 1;
 
                 var connStr = GetOptimizedConnectionString();
 
@@ -536,28 +558,8 @@ namespace SqlMonitorUI
         private List<MetricsItem> GetMetricsInternal(SqlConnection conn)
         {
             var results = new List<MetricsItem>();
-            const string q = @"DECLARE @BR BIGINT, @SC BIGINT, @TR BIGINT, @cpu INT
-SELECT @BR=ISNULL(SUM(CONVERT(BIGINT,cntr_value)),0) FROM sys.dm_os_performance_counters WITH(NOLOCK) WHERE LOWER(object_name) LIKE '%sql statistics%' AND LOWER(counter_name)='batch requests/sec'
-SELECT @SC=ISNULL(SUM(CONVERT(BIGINT,cntr_value)),0) FROM sys.dm_os_performance_counters WITH(NOLOCK) WHERE LOWER(object_name) LIKE '%sql statistics%' AND LOWER(counter_name)='sql compilations/sec'
-SELECT @TR=ISNULL(SUM(CONVERT(BIGINT,cntr_value)),0) FROM sys.dm_os_performance_counters WITH(NOLOCK) WHERE LOWER(object_name) LIKE '%databases%' AND LOWER(counter_name)='transactions/sec' AND LOWER(instance_name)<>'_total'
-SELECT TOP 1 @cpu=CONVERT(XML,record).value('(./Record/SchedulerMonitorEvent/SystemHealth/ProcessUtilization)[1]','int') FROM sys.dm_os_ring_buffers WITH(NOLOCK) WHERE ring_buffer_type='RING_BUFFER_SCHEDULER_MONITOR' ORDER BY timestamp DESC
-SELECT ISNULL(@cpu,0) AS CPU,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type LIKE 'LCK%' THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS Locks,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type LIKE 'LATCH%' OR wait_type LIKE 'PAGELATCH%' OR wait_type LIKE 'PAGEIOLATCH%' THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS Reads,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type LIKE '%IO_COMPLETION%' OR wait_type='WRITELOG' THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS Writes,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('NETWORKIO','OLEDB','ASYNC_NETWORK_IO') THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS Network,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type LIKE 'BACKUP%' THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS [Backup],
-SUM(CONVERT(BIGINT,CASE WHEN wait_type='CMEMTHREAD' OR wait_type LIKE 'RESOURCE_SEMAPHORE%' THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS Memory,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('CXPACKET','EXCHANGE') THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS Parallelism,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('LOGBUFFER','LOGMGR','WRITELOG') THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS TransactionLog,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('IO_QUEUE_LIMIT', 'IO_RETRY', 'LOG_RATE_GOVERNOR', 'POOL_LOG_RATE_GOVERNOR', 'PREEMPTIVE_DEBUG', 'RESMGR_THROTTLED', 'RESOURCE_SEMAPHORE', 'RESOURCE_SEMAPHORE_QUERY_COMPILE','SE_REPL_CATCHUP_THROTTLE','SE_REPL_COMMIT_ACK','SE_REPL_COMMIT_TURN','SE_REPL_ROLLBACK_ACK','SE_REPL_SLOW_SECONDARY_THROTTLE','THREADPOOL')THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS PoisonWaits,
-SUM(CONVERT(BIGINT,CASE WHEN wait_type IN('LCK_M_RS_S', 'LCK_M_RS_U', 'LCK_M_RIn_NL','LCK_M_RIn_S', 'LCK_M_RIn_U','LCK_M_RIn_X', 'LCK_M_RX_S', 'LCK_M_RX_U','LCK_M_RX_X')THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS 'Poison Serializable Locking',
-SUM(CONVERT(BIGINT,CASE WHEN wait_type = 'CMEMTHREAD' THEN wait_time_ms-signal_wait_time_ms ELSE 0 END)) AS 'Poison CMEMTHREAD and NUMA',
-	
-@@TOTAL_READ AS PhReads,@@TOTAL_WRITE AS PhWrites,@BR AS BatchReq,@SC AS SqlComp,@TR AS Trans 
- 
-FROM sys.dm_os_wait_stats WITH(NOLOCK)";
-            using var cmd = new SqlCommand(q, conn) { CommandTimeout = 30 };
+            var q = _config.Queries.Metrics.Sql;
+            using var cmd = new SqlCommand(q, conn) { CommandTimeout = _config.CommandTimeoutSeconds };
             try
             {
                 using var reader = cmd.ExecuteReader();
@@ -589,180 +591,64 @@ FROM sys.dm_os_wait_stats WITH(NOLOCK)";
             return results;
         }
 
-        //          using (var cmd = conn.CreateCommand())
-        //  {
-        //      cmd.CommandText = query;
-        //      cmd.Connection.Open(); 
-        //      using (var r = cmd.ExecuteReader())
-        //      {
-        //          var items = new List<S>();
-        //          while (r.Read())
-        //              items.Add(selector(r));
-        //          return items;
-        //      }
-        //  }
 
         private List<SessionItem> GetSessionsInternal(SqlConnection conn)
         {
-            string q = "SELECT TOP " + TopSessions.ToString() + " ";
-            q += @" s.spid AS Spid,
-                DB_NAME(s.dbid) AS [Database],
-                status AS Status,
-                CAST(cpu AS BIGINT) AS Cpu,
-                CAST(physical_io AS BIGINT) AS PhysicalIo,
-                hostname AS Hostname,
-                program_name AS ProgramName,
-                loginame AS LoginName,
-                cmd AS Command,CASE WHEN last_batch IS NULL OR last_batch < DATEADD(DAY, -30, GETDATE()) THEN 999999 
-     ELSE DATEDIFF(SECOND, last_batch, GETDATE()) END AS IdleSeconds
-                , ISNULL(SomeText.text,'') [text]
-                , s.blocked
-            FROM sys.sysprocesses s
-            LEFT OUTER JOIN
-            (
-            SELECT spid AS Spid, e.text
-            FROM sys.sysprocesses s WITH (NOLOCK)
-            CROSS APPLY sys.dm_exec_sql_text(sql_handle) e
-            ) SomeText ON SomeText.spid = s.spid
+            // Use query from config with placeholders replaced
+            var q = _config.GetSessionsSql(
+                _config.Queries.Sessions.TopN,
+                ShowSleepingSPIDs,
+                _programFilter);
 
-            WHERE s.spid>50 AND program_name NOT LIKE '%SQLMonitorUI%'
-            AND (hostname <> ''";
-            if (!string.IsNullOrEmpty(_programFilter))
-            {
-                q += "AND program_name LIKE '%" + _programFilter + "%')";
-            }
-            else
-            {
-                q += "AND program_name <> '')";
-            }
-
-
-            if (ShowSleepingSPIDs == false)
-            {
-                q += "AND status = CASE WHEN status = 'sleeping' THEN '' ELSE status END  ";
-            }
-
-            q += @"ORDER BY (ISNULL(cpu,0) + ISNULL(physical_io,0)) DESC";
-            //  using var cmd = new SqlCommand(q, conn) { CommandTimeout = 30 };
-            //  var dt = new DataTable();
-            //  try { new SqlDataAdapter(cmd).Fill(dt); } catch { /* Ignore empty sessions from filters */ }
-            //  return dt;
-
-
-            //  public List<SessionItem> GetSessionsFromSql(string connectionString)
-            //{
             var sess = new List<SessionItem>();
-            var totCpu = 0; var totIo = 0;
-            //using (var connection = new SqlConnection(conn))
-            //{
-            //    connection.Open();
-            using (var command = new SqlCommand(q, conn))
+            var timeout = _config.Queries.Sessions.TimeoutSeconds;
+
+            using (var command = new SqlCommand(q, conn) { CommandTimeout = timeout })
             {
-                using (var reader = command.ExecuteReader())
+                try
                 {
-                    while (reader.Read())
+                    using (var reader = command.ExecuteReader())
                     {
-                        //Spid = reader.GetInt32("session_id"),
-                        //Database = reader.GetString("database_name"),
-
-                        var cpu = Convert.ToInt32(reader["Cpu"]);
-                        var io = Convert.ToInt32(reader["PhysicalIo"]);
-                        totCpu += cpu; totIo += io;
-
-                        sess.Add(new SessionItem
+                        while (reader.Read())
                         {
-                            Spid = Convert.ToInt32(reader["Spid"]),
-                            Database = reader["Database"]?.ToString() ?? "",
-                            Status = reader["Status"]?.ToString() ?? "",
-                            Cpu = cpu,
-                            PhysicalIo = io,
-                            Hostname = reader["Hostname"]?.ToString() ?? "",
-                            ProgramName = reader["ProgramName"]?.ToString() ?? "",
-                            LoginName = reader["LoginName"]?.ToString() ?? "",
-                            Command = reader["Command"]?.ToString() ?? "",
-                            text = reader["text"]?.ToString() ?? "",
-                            Blocked = reader["blocked"]?.ToString() ?? "",
-                            IdleSeconds = reader["IdleSeconds"] != DBNull.Value ? Convert.ToInt32(reader["IdleSeconds"]) : 0
-                        });
+                            var cpu = reader["Cpu"] != DBNull.Value ? Convert.ToInt32(reader["Cpu"]) : 0;
+                            var io = reader["PhysicalIo"] != DBNull.Value ? Convert.ToInt32(reader["PhysicalIo"]) : 0;
+
+                            sess.Add(new SessionItem
+                            {
+                                Spid = Convert.ToInt32(reader["Spid"]),
+                                Database = reader["Database"]?.ToString() ?? "",
+                                Status = reader["Status"]?.ToString() ?? "",
+                                Cpu = cpu,
+                                PhysicalIo = io,
+                                Hostname = reader["Hostname"]?.ToString() ?? "",
+                                ProgramName = reader["ProgramName"]?.ToString() ?? "",
+                                LoginName = reader["LoginName"]?.ToString() ?? "",
+                                Command = reader["Command"]?.ToString() ?? "",
+                                text = reader["text"]?.ToString() ?? "",
+                                Blocked = reader["blocked"]?.ToString() ?? "",
+                                IdleSeconds = reader["IdleSeconds"] != DBNull.Value ? Convert.ToInt32(reader["IdleSeconds"]) : 0
+                            });
+                        }
                     }
                 }
+                catch { /* Ignore query errors */ }
             }
-            //}
-
-
-            //}
-
-
-            //var sess = new List<SessionItem>(); long totCpu = 0, totIo = 0;
-            //    foreach (DataRow r in dt.Rows)
-            //    {
-            //        var cpu = Convert.ToInt32(r["Cpu"]); var io = Convert.ToInt32(r["PhysicalIo"]);
-            //        totCpu += cpu; totIo += io;
-            //        sess.Add(new SessionItem
-            //        {
-            //            Spid = Convert.ToInt32(r["Spid"]),
-            //            Database = r["Database"]?.ToString() ?? "",
-            //            Status = r["Status"]?.ToString() ?? "",
-            //            Cpu = cpu,
-            //            PhysicalIo = io,
-            //            Hostname = r["Hostname"]?.ToString() ?? "",
-            //            ProgramName = r["ProgramName"]?.ToString() ?? "",
-            //            LoginName = r["LoginName"]?.ToString() ?? "",
-            //            Command = r["Command"]?.ToString() ?? "",
-            //            text = r["text"]?.ToString() ?? "",
-            //            Blocked = r["blocked"]?.ToString() ?? "",
-            //            IdleSeconds = r["IdleSeconds"] != DBNull.Value ? Convert.ToInt32(r["IdleSeconds"]) : 0
-            //        });
-            //    }
-            //    foreach (var s in sess)
-            //    {
-            //        var cpuPct = totCpu > 0 ? (double)s.Cpu / totCpu * 100 : 0;
-            //        var ioPct = totIo > 0 ? (double)s.PhysicalIo / totIo * 100 : 0;
-            //        if (!_spidHistories.ContainsKey(s.Spid)) _spidHistories[s.Spid] = new SpidHistory { Spid = s.Spid };
-            //        _spidHistories[s.Spid].AddSample(cpuPct, ioPct);
-            //        _spidHistories[s.Spid].Database = s.Database;
-            //        _spidHistories[s.Spid].IsActive = true;
-            //        _spidHistories[s.Spid].Hostname = s.Hostname;
-            //        _spidHistories[s.Spid].ProgramName = s.ProgramName;
-            //        _spidHistories[s.Spid].LoginName = s.LoginName;
-            //        _spidHistories[s.Spid].Command = s.Command;
-            //        _spidHistories[s.Spid].text = s.text;
-            //        _spidHistories[s.Spid].Blocked = s.Blocked;
-            //        _spidHistories[s.Spid].Status = s.Status;
-            //        _spidHistories[s.Spid].IdleSeconds = s.IdleSeconds;
-            //        _spidHistories[s.Spid].LastCpu = s.Cpu;
-            //        _spidHistories[s.Spid].LastIo = s.PhysicalIo;
-            //    }
-            //    var active = sess.Select(x => x.Spid).ToHashSet();
-            //    foreach (var h in _spidHistories.Values) if (!active.Contains(h.Spid)) { h.IsActive = false; h.AddSample(0, 0); }
-            //    SessionsGrid.ItemsSource = sess;
-            //    SessionCountText.Text = $" ({sess.Count})";
 
             return sess;
-            //    return dt;
-            //dt.Dispose();
         }
 
         private List<DriveLatencyItem> GetDriveLatencyInternal(SqlConnection conn)
         {
+
+
+            // Use query from config
+            var q = _config.Queries.DriveLatency.Sql;
+            var timeout = _config.Queries.DriveLatency.TimeoutSeconds;
+
             var results = new List<DriveLatencyItem>();
-            // Simplified query - removed xp_fixeddrives which can be slow or blocked
-            string q = @"SELECT 
-             LEFT(mf.physical_name, 2) + '\' [Drive]
-		    , CASE WHEN SUM(num_of_reads + num_of_writes) > 0 
-                   THEN SUM(io_stall) / SUM(num_of_reads + num_of_writes) ELSE 0 END AS [Latency(ms)]
-		    , 0 AS [GB/day]
-		    , '' AS [Free space]
-		    , CASE WHEN SUM(num_of_reads) > 0 
-                   THEN SUM(io_stall_read_ms) / SUM(num_of_reads) ELSE 0 END AS [ReadLatency(ms)]
-		    , CASE WHEN SUM(num_of_writes) > 0 
-                   THEN SUM(io_stall_write_ms) / SUM(num_of_writes) ELSE 0 END AS [WriteLatency(ms)]
-            FROM sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs WITH (NOLOCK)
-            INNER JOIN sys.master_files AS mf WITH (NOLOCK)
-            ON vfs.database_id = mf.database_id AND vfs.file_id = mf.file_id
-            GROUP BY LEFT(mf.physical_name, 2)
-            OPTION (MAXDOP 1)";
-            using var cmd = new SqlCommand(q, conn) { CommandTimeout = 10 };
+            using var cmd = new SqlCommand(q, conn) { CommandTimeout = timeout };
+
             try
             {
                 using var reader = cmd.ExecuteReader();
@@ -785,65 +671,15 @@ FROM sys.dm_os_wait_stats WITH(NOLOCK)";
 
         private List<ServerDetailsItem> GetServerDetailsInternal(SqlConnection conn)
         {
+
+            // Use query from config
+            var q = _config.Queries.ServerDetails.Sql;
+            var timeout = _config.Queries.ServerDetails.TimeoutSeconds;
+
             var results = new List<ServerDetailsItem>();
-            // Simplified query - removed complex dynamic SQL for performance
-            string q = @"
-DECLARE @CPUcount INT;
-            DECLARE @CPUsocketcount INT;
-            DECLARE @CPUHyperthreadratio MONEY ;
-            DECLARE @totalMemoryGB MONEY 
-            DECLARE @AvailableMemoryGB MONEY 
-            DECLARE @UsedMemory MONEY ;
-            DECLARE @MemoryStateDesc [NVARCHAR] (50);
-            DECLARE @VMType [NVARCHAR] (200)
-            DECLARE @ServerType [NVARCHAR] (20);
-            DECLARE @MaxRamServer INT
-            DECLARE @SQLVersion INT;
-
-            SELECT @VMType = RIGHT(@@version,CHARINDEX('(',REVERSE(@@version)));
+            using var cmd = new SqlCommand(q, conn) { CommandTimeout = timeout };
 
 
-            SELECT @CPUcount = cpu_count 
-            , @CPUsocketcount = [cpu_count] / [hyperthread_ratio]
-            , @CPUHyperthreadratio = [hyperthread_ratio]
-            FROM [sys].dm_os_sys_info;
-            EXEC sp_executesql N'SELECT @_UsedMemory =  CONVERT(MONEY,physical_memory_in_use_kb)/1024 /1000 FROM [sys].dm_os_process_memory WITH (NOLOCK) OPTION (RECOMPILE)'
-            , N'@_UsedMemory MONEY  OUTPUT'
-            , @_UsedMemory = @UsedMemory OUTPUT;
-
-            EXEC sp_executesql N'SELECT @_totalMemoryGB = CONVERT(MONEY,total_physical_memory_kb)/1024/1000 FROM [sys].dm_os_sys_memory WITH (NOLOCK) OPTION (RECOMPILE)'
-            , N'@_totalMemoryGB MONEY  OUTPUT'
-            , @_totalMemoryGB = @totalMemoryGB OUTPUT;
-
-            EXEC sp_executesql N'SELECT @_AvailableMemoryGB =  CONVERT(MONEY,available_physical_memory_kb)/1024/1000 FROM [sys].dm_os_sys_memory WITH (NOLOCK) OPTION (RECOMPILE);'
-            , N'@_AvailableMemoryGB MONEY  OUTPUT'
-            , @_AvailableMemoryGB = @AvailableMemoryGB OUTPUT;
-
-            EXEC sp_executesql N'SELECT @_MemoryStateDesc =   system_memory_state_desc from  [sys].dm_os_sys_memory;'
-            , N'@_MemoryStateDesc [NVARCHAR] (50) OUTPUT'
-            , @_MemoryStateDesc = @MemoryStateDesc OUTPUT;
-
-            SELECT 
-            @@SERVERNAME [ServerName]
-            ,REPLACE(REPLACE(CAST(SERVERPROPERTY('Edition') AS NVARCHAR(100)),' Edition',''),' (64-bit)','') [Edition]
-            , [Sockets] =  ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],CONVERT([VARCHAR](20),(@CPUsocketcount ) )), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' '),'')
-            , [Virtual CPUs] =  ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],CONVERT([VARCHAR](20),@CPUcount   )), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'')
-            , [VM Type] =  ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],ISNULL(@VMType,'')), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'')
-            , [MemoryGB] = ISNULL(CONVERT([VARCHAR](20), CONVERT(MONEY,CONVERT(FLOAT,@totalMemoryGB))),'')
-            , [SQL Allocated] =ISNULL(CONVERT([VARCHAR](20), CONVERT(MONEY,CONVERT(FLOAT,@UsedMemory))) ,'')
-            , [Used by SQL]= ISNULL(CONVERT([VARCHAR](20), CONVERT(FLOAT,@UsedMemory)),'')
-            , [Memory State]= ISNULL((@MemoryStateDesc),'')  
-            , [ServerName]= ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],SERVERPROPERTY('ServerName')), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'')
-            , [Version]= ISNULL(REPLACE(replace(replace(replace(replace(CONVERT([NVARCHAR],LEFT( @@version, PATINDEX('%-%',( @@version))-2) ), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'Microsoft SQL Server ',''),'')
-            , [BuildNr]= ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],SERVERPROPERTY('ProductVersion')), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'')
-            , [OS]=  ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],RIGHT( @@version, LEN(@@version) - PATINDEX('% on %',( @@version))-3) ), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'')
-            , [Edition]= ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],SERVERPROPERTY('Edition')), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'')
-            , [HADR]= ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],SERVERPROPERTY('IsHadrEnabled')), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' ') ,'')
-            , [SA]= ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],SERVERPROPERTY('IsIntegratedSecurityOnly' )), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' '),'')
-            , [Level]= ISNULL(replace(replace(replace(replace(CONVERT([NVARCHAR],SERVERPROPERTY('ProductLevel')), CHAR(9), ' '),CHAR(10),' '), CHAR(13), ' '), '  ',' '),'')
-	            FROM [sys].[dm_os_sys_info] OPTION (RECOMPILE)
-";
-            using var cmd = new SqlCommand(q, conn) { CommandTimeout = 10 };
             try
             {
                 using var reader = cmd.ExecuteReader();
@@ -875,34 +711,13 @@ DECLARE @CPUcount INT;
 
         private List<BlockingInfo> GetBlockingInfoInternal(SqlConnection conn)
         {
-            var results = new List<BlockingInfo>();
-            string q = "SELECT TOP " + TopSessions.ToString() + " ";
-            q += @" t1.resource_type AS lock_type,
-                DB_NAME(resource_database_id) AS database_name,
-                t1.resource_associated_entity_id AS blk_object,
-                t1.request_mode AS lock_req,
-                t1.request_session_id AS wait_sid,
-                t2.wait_duration_ms AS wait_time,
-                t2.wait_type AS wait_type,
-                (SELECT text FROM sys.dm_exec_requests r
-                    CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) 
-                    WHERE r.session_id = t1.request_session_id) AS wait_batch,
-                (SELECT SUBSTRING(qt.text, r.statement_start_offset/2, 
-                    (CASE WHEN r.statement_end_offset = -1 
-                    THEN LEN(CONVERT(NVARCHAR(MAX), qt.text)) * 2 
-                    ELSE r.statement_end_offset END - r.statement_start_offset)/2) 
-                    FROM sys.dm_exec_requests r
-                    CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) qt
-                    WHERE r.session_id = t1.request_session_id) AS wait_stmt,
-                (SELECT text FROM sys.sysprocesses p
-                    CROSS APPLY sys.dm_exec_sql_text(p.sql_handle) 
-                    WHERE p.spid = t2.blocking_session_id) AS block_stmt,
-                t2.blocking_session_id AS blocker_sid
-            FROM sys.dm_tran_locks t1 WITH (NOLOCK)
-            INNER JOIN sys.dm_os_waiting_tasks t2 ON t1.lock_owner_address = t2.resource_address
-            ORDER BY t2.wait_duration_ms DESC  ";
+            // Use query from config
+            var q = _config.Queries.Blocking.Sql;
+            var timeout = _config.Queries.Blocking.TimeoutSeconds;
 
-            using var cmd = new SqlCommand(q, conn) { CommandTimeout = 30 };
+            var results = new List<BlockingInfo>();
+            using var cmd = new SqlCommand(q, conn) { CommandTimeout = timeout };
+
             try
             {
                 using var reader = cmd.ExecuteReader();
@@ -910,76 +725,32 @@ DECLARE @CPUcount INT;
                 {
                     results.Add(new BlockingInfo
                     {
-                        LockType = reader["lock_type"]?.ToString() ?? "",
-                        DatabaseName = reader["database_name"]?.ToString() ?? "",
-                        WaitSpid = reader["wait_sid"] != DBNull.Value ? Convert.ToInt32(reader["wait_sid"]) : 0,
-                        BlockerSpid = reader["blocker_sid"] != DBNull.Value ? Convert.ToInt32(reader["blocker_sid"]) : 0,
-                        WaitDurationMs = reader["wait_time"] != DBNull.Value ? Convert.ToInt64(reader["wait_time"]) : 0,
-                        WaitType = reader["wait_type"]?.ToString() ?? "",
-                        WaitStatement = reader["wait_stmt"]?.ToString() ?? reader["wait_batch"]?.ToString() ?? "",
-                        BlockerStatement = reader["block_stmt"]?.ToString() ?? ""
+                        LockType = reader["LockType"]?.ToString() ?? "",
+                        DatabaseName = reader["DatabaseName"]?.ToString() ?? "",
+                        WaitSpid = reader["WaitSpid"] != DBNull.Value ? Convert.ToInt32(reader["WaitSpid"]) : 0,
+                        BlockerSpid = reader["BlockerSpid"] != DBNull.Value ? Convert.ToInt32(reader["BlockerSpid"]) : 0,
+                        WaitDurationMs = reader["WaitDurationMs"] != DBNull.Value ? Convert.ToInt64(reader["WaitDurationMs"]) : 0,
+                        WaitType = reader["WaitType"]?.ToString() ?? "",
+                        WaitStatement = reader["WaitStatement"]?.ToString() ?? "",
+                        BlockerStatement = reader["BlockerStatement"]?.ToString() ?? ""
                     });
                 }
             }
-            catch { /* Ignore blocking query errors */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Blocking query error: {ex.Message}");
+            }
             return results;
         }
 
         private List<TopQueryItem> GetTopQueriesInternal(SqlConnection conn)
         {
-            const string q = @"SELECT
-                TMP.Category,
-                DB_NAME(st.dbid) [DB],
-                TMP.[Total Elapsed Time in S],
-                TMP.[Total Execution Count],
-                TMP.[Total CPU Time in S],
-                TMP.[Total Logical Reads],
-                TMP.[Total Logical Writes],
-                TMP.[Total CLR Time],
-                TMP.[Number of Statements],
-                TMP.[Last Execution Time],
-                TMP.[Plan Handle],
-                st.text AS [Query],
-                qp.query_plan AS [Plan]
-
-            FROM (
-                SELECT * FROM (
-                    SELECT TOP 10 'worst I/O' [Category],
-                        CAST(SUM(s.total_elapsed_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total Elapsed Time in S],
-                        SUM(s.execution_count) AS [Total Execution Count],
-                        CAST(SUM(s.total_worker_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total CPU Time in S],
-                        SUM(s.total_logical_reads) AS [Total Logical Reads],
-                        SUM(s.total_logical_writes) AS [Total Logical Writes],
-                        SUM(s.total_clr_time) AS [Total CLR Time],
-                        COUNT(1) AS [Number of Statements],
-                        MAX(s.last_execution_time) AS [Last Execution Time],
-                        s.plan_handle AS [Plan Handle]
-                    FROM sys.dm_exec_query_stats s
-                    GROUP BY s.plan_handle ORDER BY SUM(s.total_logical_reads + s.total_logical_writes) DESC
-                ) TT
-                --UNION ALL
-                --SELECT * FROM (
-                --    SELECT TOP 10 'worst CPU' [Category],
-                --        CAST(SUM(s.total_elapsed_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total Elapsed Time in S],
-                --        SUM(s.execution_count) AS [Total Execution Count],
-                --        CAST(SUM(s.total_worker_time) / 1000000.0 AS DECIMAL(20, 2)) AS [Total CPU Time in S],
-                --        SUM(s.total_logical_reads) AS [Total Logical Reads],
-                --        SUM(s.total_logical_writes) AS [Total Logical Writes],
-                --        SUM(s.total_clr_time) AS [Total CLR Time],
-                --        COUNT(1) AS [Number of Statements],
-                --        MAX(s.last_execution_time) AS [Last Execution Time],
-                --        s.plan_handle AS [Plan Handle]
-                --    FROM sys.dm_exec_query_stats s
-                --    GROUP BY s.plan_handle ORDER BY SUM(s.total_worker_time) DESC
-                --) T
-            ) TMP
-            OUTER APPLY sys.dm_exec_sql_text(TMP.[Plan Handle]) AS st
-            OUTER APPLY
-	                sys.dm_exec_query_plan(TMP.[Plan Handle]) AS qp
-            ORDER BY Category, [Total Logical Reads] DESC  ";
+            // Use query from config
+            var q = _config.Queries.TopQueries.Sql;
+            var timeout = _config.Queries.TopQueries.TimeoutSeconds;
 
             var results = new List<TopQueryItem>();
-            using var cmd = new SqlCommand(q, conn) { CommandTimeout = 30 };
+            using var cmd = new SqlCommand(q, conn) { CommandTimeout = timeout };
             try
             {
                 using var reader = cmd.ExecuteReader();
@@ -1056,25 +827,25 @@ DECLARE @CPUcount INT;
             }
             if (ed.IndexOf("Business") > 0)
             {
-                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 ;
+                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2;
             }
             if (ed.IndexOf("Enterprise") > 0)
             {
                 licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2;
             }
 
-           //switch (ed)
-           //{
-           //    case "Enterprise":
-           //        licensingRetailUSDServer = licensingRetailUSD * cpus / 2;
-           //        break;
-           //    case "Standard":
-           //        licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 / 3.832;
-           //        break;
-           //    default:
-           //        licensingRetailUSDServer = 0;
-           //        break;
-           //}
+            //switch (ed)
+            //{
+            //    case "Enterprise":
+            //        licensingRetailUSDServer = licensingRetailUSD * cpus / 2;
+            //        break;
+            //    case "Standard":
+            //        licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 / 3.832;
+            //        break;
+            //    default:
+            //        licensingRetailUSDServer = 0;
+            //        break;
+            //}
             LicensingText.Text = licensingRetailUSDServer.ToString("C0");
 
 
@@ -1460,26 +1231,7 @@ DECLARE @CPUcount INT;
         {
             //var sess = new List<SessionItem>() = dt;
             ; long totCpu = 0, totIo = 0;
-            //foreach (DataRow r in dt.Rows)
-            //{
-            //    var cpu = Convert.ToInt32(r["Cpu"]); var io = Convert.ToInt32(r["PhysicalIo"]);
-            //    totCpu += cpu; totIo += io;
-            //    sess.Add(new SessionItem
-            //    {
-            //        Spid = Convert.ToInt32(r["Spid"]),
-            //        Database = r["Database"]?.ToString() ?? "",
-            //        Status = r["Status"]?.ToString() ?? "",
-            //        Cpu = cpu,
-            //        PhysicalIo = io,
-            //        Hostname = r["Hostname"]?.ToString() ?? "",
-            //        ProgramName = r["ProgramName"]?.ToString() ?? "",
-            //        LoginName = r["LoginName"]?.ToString() ?? "",
-            //        Command = r["Command"]?.ToString() ?? "",
-            //        text = r["text"]?.ToString() ?? "",
-            //        Blocked = r["blocked"]?.ToString() ?? "",
-            //        IdleSeconds = r["IdleSeconds"] != DBNull.Value ? Convert.ToInt32(r["IdleSeconds"]) : 0
-            //    });
-            //}
+
             foreach (var s in sess)
             {
                 var cpuPct = totCpu > 0 ? (double)s.Cpu / totCpu * 100 : 0;
@@ -1815,7 +1567,7 @@ DECLARE @CPUcount INT;
             //net48 var waitSpids = _currentBlocking.Select(b => b.WaitSpid).ToHashSet();
             var blockerSpids = new HashSet<int>(_currentBlocking.Select(b => b.BlockerSpid));
             var waitSpids = new HashSet<int>(_currentBlocking.Select(b => b.WaitSpid));
-    
+
             // Use virtualization or pagination for large datasets
             //var visibleData = spidData.Take(1000); // Limit to prevent UI lag 
 
@@ -1920,28 +1672,6 @@ DECLARE @CPUcount INT;
                     SpidBoxesCanvas.Children.Insert(0, line);
                     //Float lien above boxes
                     System.Windows.Controls.Panel.SetZIndex(line, 1);
-
-
-                    // Draw Arrows, maybe too much for now
-                    //var angle = Math.Atan2(blockerPos.Y - waitPos.Y, blockerPos.X - waitPos.X);
-                    //var arrowLength = 10;
-                    //var arrowAngle = Math.PI / 6;
-                    //
-                    //var arrowX = blockerPos.X - 30 * Math.Cos(angle);
-                    //var arrowY = blockerPos.Y - 30 * Math.Sin(angle);
-                    //
-                    //var arrow = new Polygon
-                    //{
-                    //    Fill = Brushes.Red,
-                    //    Points = new PointCollection
-                    //    {
-                    //        new Point(arrowX, arrowY),
-                    //        new Point(arrowX - arrowLength * Math.Cos(angle - arrowAngle), arrowY - arrowLength * Math.Sin(angle - arrowAngle)),
-                    //        new Point(arrowX - arrowLength * Math.Cos(angle + arrowAngle), arrowY - arrowLength * Math.Sin(angle + arrowAngle))
-                    //    }
-                    //};
-                    //SpidBoxesCanvas.Children.Insert(0, arrow);
-                    //Panel.SetZIndex(arrow, 1);
 
                 }
             }
@@ -2175,7 +1905,33 @@ DECLARE @CPUcount INT;
         // Save Plan button handler
 
 
-        protected override void OnClosed(EventArgs e) { StopMonitoring(); base.OnClosed(e); }
+        protected override void OnClosed(EventArgs e)
+        {
+            // Stop monitoring and clean up resources
+            StopMonitoring();
+
+            // Unsubscribe from config changes
+            _config.ConfigReloaded -= Config_ConfigReloaded;
+
+            // Dispose cancellation token source
+            _refreshCts?.Cancel();
+            _refreshCts?.Dispose();
+            _refreshCts = null;
+
+            // Clear collections to help GC
+            _spidHistories.Clear();
+            _waitHistory.Clear();
+            _currentBlocking.Clear();
+            _spidBoxPositions.Clear();
+            _spidBoxBorders.Clear();
+            _spidBoxPool.Clear();
+            _activeSpidBoxes.Clear();
+            _blockingLinePool.Clear();
+            _activeBlockingLines.Clear();
+            _graphPolylines.Clear();
+
+            base.OnClosed(e);
+        }
     }
 
     public class ServerItem
@@ -2225,14 +1981,6 @@ DECLARE @CPUcount INT;
         public long LastCpu { get; set; }
         public long LastIo { get; set; }
 
-        // Current approach - potentially inefficient
-        //public void AddSample(double c, double i)
-        //{
-        //    CpuHistory.Enqueue(c);
-        //    IoHistory.Enqueue(i);
-        //    while (CpuHistory.Count > 30) CpuHistory.Dequeue();
-        //    while (IoHistory.Count > 30) IoHistory.Dequeue();
-        //}
 
         // Optimized version
         public void AddSample(double c, double i)

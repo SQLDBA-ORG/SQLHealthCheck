@@ -330,7 +330,11 @@ var lvl = r["Level"];
   BorderThickness="0"
   RowHeight="26"
                                   Height="400"
-  VerticalScrollBarVisibility="Auto">
+  VerticalScrollBarVisibility="Auto"
+  EnableRowVirtualization="True"
+  EnableColumnVirtualization="True"
+  VirtualizingStackPanel.IsVirtualizing="True"
+  VirtualizingStackPanel.VirtualizationMode="Recycling">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="SPID" Binding="{Binding Spid}" Width="50"/>
                                 <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="60"/>
@@ -359,7 +363,10 @@ var lvl = r["Level"];
       GridLinesVisibility="Horizontal"
       BorderThickness="0"
       RowHeight="28"
-      VerticalScrollBarVisibility="Auto">
+      VerticalScrollBarVisibility="Auto"
+      EnableRowVirtualization="True"
+      VirtualizingStackPanel.IsVirtualizing="True"
+      VirtualizingStackPanel.VirtualizationMode="Recycling">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="" Width="20">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -488,7 +495,10 @@ ToolTip="View the full query text in a copyable window"/>
                   BorderThickness="0"
                   RowHeight="26" 
                   Height="150"
-                HorizontalScrollBarVisibility="Auto">
+                HorizontalScrollBarVisibility="Auto"
+                EnableRowVirtualization="True"
+                VirtualizingStackPanel.IsVirtualizing="True"
+                VirtualizingStackPanel.VirtualizationMode="Recycling">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Lock Type" Binding="{Binding LockType}" Width="80"/>
                                 <DataGridTextColumn Header="Database" Binding="{Binding DatabaseName}" Width="90"/>
@@ -539,7 +549,11 @@ ToolTip="View the full query text in a copyable window"/>
                   SelectionMode="Single"
                                   Height="150"
                                   HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="4">
+                  VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="4"
+                  EnableRowVirtualization="True"
+                  EnableColumnVirtualization="True"
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="80"/>
                                 <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="90"/>

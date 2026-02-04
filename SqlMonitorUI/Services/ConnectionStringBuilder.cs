@@ -211,7 +211,7 @@ namespace SqlCheckLibrary.Services
                 return BuildWithSqlAuth(
                     info.Server,
                     info.Username ?? "",
-                    password,
+                    password!,
                     info.Database,
                     info.Encrypt,
                     info.TrustServerCertificate);

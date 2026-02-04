@@ -48,12 +48,16 @@ Live monitoting update to include blocking queries.</PackageReleaseNotes>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.*" />
-
     <PackageReference Include="System.Text.Json" Version="8.*" />
+    <!-- MVVM toolkit for cleaner ViewModels -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="azcopy.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="LiveMonitoring.config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="script-configurations.json">
@@ -80,7 +84,7 @@ Live monitoting update to include blocking queries.</PackageReleaseNotes>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="powershell -command &quot;&amp; {Add-Type -A 'System.IO.Compression.FileSystem'; [System.IO.Compression.ZipFile]::CreateFromDirectory('$(TargetDir)', '$(OutDir)..\..\..\SqlHealthMonitor-$(TargetFramework)-win-$(Platform).zip'), $true}&quot;" />
+    <Exec Command="powershell -command &quot;&amp; {Remove-Item '$(OutDir)..\..\..\SqlHealthMonitor-$(TargetFramework)-win-$(Platform).zip'}&quot;&#xD;&#xA;powershell -command &quot;&amp; {Add-Type -A 'System.IO.Compression.FileSystem'; [System.IO.Compression.ZipFile]::CreateFromDirectory('$(TargetDir)', '$(OutDir)..\..\..\SqlHealthMonitor-$(TargetFramework)-win-$(Platform).zip'), $true}&quot;" />
   </Target>
 	
 </Project>
