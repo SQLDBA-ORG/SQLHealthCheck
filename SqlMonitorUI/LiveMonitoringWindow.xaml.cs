@@ -833,18 +833,23 @@ namespace SqlMonitorUI
             //Web
             licensingRetailUSDServer = 0;
 
-            if (ed.IndexOf("Standard") > 0)
+            switch (ed)
             {
-                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 / 3.832;
+                case "Business Intelligence":
+                    licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2;
+                    break;
+                case "Standard":
+                    licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2 / 3.832;
+                    break;
+                case "Enterprise":
+                    licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2;
+                    break;
+                default:
+                    licensingRetailUSDServer = 0;
+                    break;
             }
-            if (ed.IndexOf("Business") > 0)
-            {
-                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2;
-            }
-            if (ed.IndexOf("Enterprise") > 0)
-            {
-                licensingRetailUSDServer = Convert.ToDouble(licensingRetailUSD) * cpus / 2;
-            }
+
+
 
             //switch (ed)
             //{
