@@ -11,192 +11,192 @@
         
         Background="#F5F5F5">
     <!--   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">-->
-        <Grid Width="1583" Height="Auto" >
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="272*"/>
-                <ColumnDefinition Width="399*"/>
-                <ColumnDefinition Width="59*"/>
-                <ColumnDefinition Width="853*"/>
-            </Grid.ColumnDefinitions>
+    <Grid Width="1583" Height="Auto" >
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="272*"/>
+            <ColumnDefinition Width="399*"/>
+            <ColumnDefinition Width="59*"/>
+            <ColumnDefinition Width="853*"/>
+        </Grid.ColumnDefinitions>
 
-            <Grid.RowDefinitions>
-                <RowDefinition Height="125"/>
-                <!-- Header -->
-                <RowDefinition Height="Auto"/>
-                <!-- Row1 -->
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
+        <Grid.RowDefinitions>
+            <RowDefinition Height="125"/>
             <!-- Header -->
-            <Border Grid.Row="0" Background="#FF69B961" Padding="0" Grid.ColumnSpan="4" Margin="0,0,0,52" >
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="60"/>
-                        <ColumnDefinition Width="175"/>
-                        <ColumnDefinition Width="100"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="125"/>
-                        <ColumnDefinition Width="175"/>
-                        <ColumnDefinition Width="30"/>
-                        <ColumnDefinition Width="200"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="50"/>
-                        <ColumnDefinition Width="175"/>
-                        <ColumnDefinition Width="75"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="0" >
-                        <TextBlock  Text="Server :" Foreground="white" Margin="5,8,5,0" VerticalAlignment="Top" FontSize="14"/>
-                    </Grid>
-                    <Grid Grid.Column="1" >
-                        <ComboBox  x:Name="ServerCombo" Width="150" SelectionChanged="ServerCombo_SelectionChanged" Height="26" VerticalAlignment="Top" Margin="5,8,5,0">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding DisplayName}" Foreground="{Binding TextColor}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </Grid>
-                    <Grid Grid.Column="2">
-                        <TextBlock x:Name="ConnectionStatusText" Text="Connecting.."  Foreground="White" Margin="0,12,10,0" VerticalAlignment="Top" />
-                    </Grid>
- 
-                    <Grid Grid.Column="3">
-                        <TextBlock Text="Live Performance Monitor" FontSize="20" FontWeight="SemiBold" Foreground="White"  Margin="5,5,5,0" VerticalAlignment="Top" />
-                    </Grid>
-                    <Grid Grid.Column="4">
-                        <TextBlock Text=" Filter by Program :"  Margin="0,12,10,0" VerticalAlignment="Top" FontSize="12" Foreground="White" HorizontalAlignment="Right" />
-                    </Grid>
-                    <Grid Grid.Column="5">
-                        
-                        <!-- Filter by program name -->
-                        <TextBox x:Name="ProgramFilterText" Height="26" VerticalAlignment="Top" Margin="5,8,0,0"
+            <RowDefinition Height="Auto"/>
+            <!-- Row1 -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#FF69B961" Padding="0" Grid.ColumnSpan="4" Margin="0,0,0,52" >
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60"/>
+                    <ColumnDefinition Width="175"/>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="125"/>
+                    <ColumnDefinition Width="175"/>
+                    <ColumnDefinition Width="30"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="75"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="175"/>
+                    <ColumnDefinition Width="75"/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0" >
+                    <TextBlock  Text="Server :" Foreground="white" Margin="5,8,5,0" VerticalAlignment="Top" FontSize="14"/>
+                </Grid>
+                <Grid Grid.Column="1" >
+                    <ComboBox  x:Name="ServerCombo" Width="150" SelectionChanged="ServerCombo_SelectionChanged" Height="26" VerticalAlignment="Top" Margin="5,8,5,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayName}" Foreground="{Binding TextColor}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+                <Grid Grid.Column="2">
+                    <TextBlock x:Name="ConnectionStatusText" Text="Connecting.."  Foreground="White" Margin="0,12,10,0" VerticalAlignment="Top" />
+                </Grid>
+
+                <Grid Grid.Column="3">
+                    <TextBlock Text="Live Performance Monitor" FontSize="20" FontWeight="SemiBold" Foreground="White"  Margin="5,5,5,0" VerticalAlignment="Top" />
+                </Grid>
+                <Grid Grid.Column="4">
+                    <TextBlock Text=" Filter by Program :"  Margin="0,12,10,0" VerticalAlignment="Top" FontSize="12" Foreground="White" HorizontalAlignment="Right" />
+                </Grid>
+                <Grid Grid.Column="5">
+
+                    <!-- Filter by program name -->
+                    <TextBox x:Name="ProgramFilterText" Height="26" VerticalAlignment="Top" Margin="5,8,0,0"
 TextChanged="ProgramFilterText_TextChanged" 
 ToolTip="Filter sessions by program name (case-insensitive)"/>
-                    </Grid>
-                    <Grid Grid.Column="6">
+                </Grid>
+                <Grid Grid.Column="6">
 
-                        <Button Content="✕" Width="22" Height="22" FontSize="12" Margin="0,8,5,0" VerticalAlignment="Top" HorizontalAlignment="Left"
+                    <Button Content="✕" Width="22" Height="22" FontSize="12" Margin="0,8,5,0" VerticalAlignment="Top" HorizontalAlignment="Left"
        Click="ClearProgramFilter_Click" ToolTip="Clear filter" FontWeight="Bold"
        Background="Transparent" BorderThickness="0"/>
-                    </Grid>
-                    <Grid Grid.Column="7">
-                        <!-- CheckBox to show/hide sleeping SPIDs -->
-                        <CheckBox x:Name="SPIDFilter" Grid.Row="1" Margin="5,8,5,28" Height="26" VerticalAlignment="Center" 
+                </Grid>
+                <Grid Grid.Column="7">
+                    <!-- CheckBox to show/hide sleeping SPIDs -->
+                    <CheckBox x:Name="SPIDFilter" Grid.Row="1" Margin="5,8,5,28" Height="26" VerticalAlignment="Center" 
 Content="Showing Sleeping SPIDs" IsThreeState="False"
 Checked="ToggleSPIDFilter_Checked" Unchecked="ToggleSPIDFilter_Unchecked" FontWeight="Bold" Foreground="white" IsChecked="False"
  />
-                    </Grid>
-                    <Grid Grid.Column="8">
-                        <TextBlock Text="Max sessions:" Foreground="White" VerticalAlignment="Top" Margin="0,12,10,0"/>
+                </Grid>
+                <Grid Grid.Column="8">
+                    <TextBlock Text="Max sessions:" Foreground="White" VerticalAlignment="Top" Margin="0,12,10,0"/>
 
-                    </Grid>
-                    <Grid Grid.Column="9">
-                        <TextBox x:Name="LimitSessionsText"  Text="15" TextAlignment="left" 
+                </Grid>
+                <Grid Grid.Column="9">
+                    <TextBox x:Name="LimitSessionsText"  Text="15" TextAlignment="left" 
 TextChanged="LimitSessions"
 ToolTip="Only show a maximum of this amount of sessions" Background="White" VerticalAlignment="Top" Margin="5,8,5,0" Height="26" VerticalContentAlignment="Center"/>
-                    </Grid>
-                    <Grid Grid.Column="10">
-                        <TextBlock Text="Refresh:" Foreground="White" VerticalAlignment="Top" Margin="0,12,10,0"/>
-                        <ComboBox x:Name="RefreshIntervalCombo" VerticalAlignment="Top" Margin="5,8,5,0" Width="58" SelectedIndex="1" SelectionChanged="RefreshIntervalCombo_SelectionChanged" Height="25">
-                            <ComboBoxItem Content="1 sec"/>
-                            <ComboBoxItem Content="5 sec"/>
-                            <ComboBoxItem Content="10 sec"/>
-                            <ComboBoxItem Content="30 sec"/>
-                        </ComboBox>
-                    </Grid>
-                    <Grid Grid.Column="11">
-                        <Button x:Name="StartStopButton" Content="■ Stop" Click="StartStopButton_Click" VerticalAlignment="Top" Margin="5,8,5,0"
+                </Grid>
+                <Grid Grid.Column="10">
+                    <TextBlock Text="Refresh:" Foreground="White" VerticalAlignment="Top" Margin="0,12,10,0"/>
+                    <ComboBox x:Name="RefreshIntervalCombo" VerticalAlignment="Top" Margin="5,8,5,0" Width="58" SelectedIndex="1" SelectionChanged="RefreshIntervalCombo_SelectionChanged" Height="25">
+                        <ComboBoxItem Content="1 sec"/>
+                        <ComboBoxItem Content="5 sec"/>
+                        <ComboBoxItem Content="10 sec"/>
+                        <ComboBoxItem Content="30 sec"/>
+                    </ComboBox>
+                </Grid>
+                <Grid Grid.Column="11">
+                    <Button x:Name="StartStopButton" Content="■ Stop" Click="StartStopButton_Click" VerticalAlignment="Top" Margin="5,8,5,0"
     Padding="3,4,3,4" Background="#D83B01" Foreground="White" 
     BorderThickness="0" FontWeight="SemiBold" Cursor="Hand" IsEnabled="False" Height="26" />
-                    </Grid>
-                   
                 </Grid>
-            </Border>
 
-            <!-- Key Metrics Cards -->
-            <Grid  Margin="15,50,15,0" Grid.ColumnSpan="4">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+            </Grid>
+        </Border>
+
+        <!-- Key Metrics Cards -->
+        <Grid  Margin="15,50,15,0" Grid.ColumnSpan="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
-                    <StackPanel>
-                        <TextBlock Text="CPU %" FontSize="11" Foreground="#666"/>
-                        <TextBlock x:Name="CpuText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#0078D4"/>
-                    </StackPanel>
-                </Border>
+            <Border Grid.Column="0" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="CPU %" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="CpuText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#0078D4"/>
+                </StackPanel>
+            </Border>
 
-                <Border Grid.Column="1" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
-                    <StackPanel>
-                        <TextBlock Text="Batch Req/sec" FontSize="11" Foreground="#666"/>
-                        <TextBlock x:Name="BatchReqText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#107C10"/>
-                    </StackPanel>
-                </Border>
+            <Border Grid.Column="1" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Batch Req/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="BatchReqText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#107C10"/>
+                </StackPanel>
+            </Border>
 
-                <Border Grid.Column="2" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
-                    <StackPanel>
-                        <TextBlock Text="Transactions/sec" FontSize="11" Foreground="#666"/>
-                        <TextBlock x:Name="TransText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#FF8C00"/>
-                    </StackPanel>
-                </Border>
+            <Border Grid.Column="2" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Transactions/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="TransText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#FF8C00"/>
+                </StackPanel>
+            </Border>
 
-                <Border Grid.Column="3" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
-                    <StackPanel>
-                        <TextBlock Text="Compilations/sec" FontSize="11" Foreground="#666"/>
-                        <TextBlock x:Name="CompilationsText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#6B69D6"/>
-                    </StackPanel>
-                </Border>
+            <Border Grid.Column="3" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Compilations/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="CompilationsText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#6B69D6"/>
+                </StackPanel>
+            </Border>
 
-                <Border Grid.Column="4" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0" >
-                    <StackPanel>
-                        <TextBlock Text="Page Reads/sec" FontSize="11" Foreground="#666"/>
-                        <TextBlock x:Name="ReadsText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#D83B01"/>
-                    </StackPanel>
-                </Border>
+            <Border Grid.Column="4" Background="White" CornerRadius="4" Padding="5" Margin="15,0,5,0" >
+                <StackPanel>
+                    <TextBlock Text="Page Reads/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="ReadsText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#D83B01"/>
+                </StackPanel>
+            </Border>
 
-                <Border Grid.Column="5" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
-                    <StackPanel>
-                        <TextBlock Text="Page Writes/sec" FontSize="11" Foreground="#666"/>
-                        <TextBlock x:Name="WritesText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#8B008B"/>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="6" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
-                    <StackPanel>
-                        <TextBlock Text="Poison Waits/sec" FontSize="11" Foreground="Red"/>
-                        <TextBlock x:Name="PoisonWaitsText" Text="--" FontSize="25" FontWeight="Bold" Foreground="Red"/>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="7" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
-                    <StackPanel>
-                        <TextBlock Text="Serializable Locking/sec" FontSize="11" Foreground="Red"/>
-                        <TextBlock x:Name="PoisonWaitsSLText" Text="--" FontSize="25" FontWeight="Bold" Foreground="Red"/>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="8" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
-                    <StackPanel>
-                        <TextBlock Text="CMEMTHREAD NUMA/sec" FontSize="11" Foreground="Red"/>
-                        <TextBlock x:Name="PoisonWaitsMemText" Text="--" FontSize="25" FontWeight="Bold" Foreground="Red"/>
-                    </StackPanel>
-                </Border> 
-            </Grid>
+            <Border Grid.Column="5" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
+                <StackPanel>
+                    <TextBlock Text="Page Writes/sec" FontSize="11" Foreground="#666"/>
+                    <TextBlock x:Name="WritesText" Text="--" FontSize="25" FontWeight="Bold" Foreground="#8B008B"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="6" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
+                <StackPanel>
+                    <TextBlock Text="Poison Waits/sec" FontSize="11" Foreground="Red"/>
+                    <TextBlock x:Name="PoisonWaitsText" Text="--" FontSize="25" FontWeight="Bold" Foreground="Red"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="7" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
+                <StackPanel>
+                    <TextBlock Text="Serializable Locking/sec" FontSize="11" Foreground="Red"/>
+                    <TextBlock x:Name="PoisonWaitsSLText" Text="--" FontSize="25" FontWeight="Bold" Foreground="Red"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="8" Background="White" CornerRadius="4" Padding="5" Margin="15,0,0,0" >
+                <StackPanel>
+                    <TextBlock Text="CMEMTHREAD NUMA/sec" FontSize="11" Foreground="Red"/>
+                    <TextBlock x:Name="PoisonWaitsMemText" Text="--" FontSize="25" FontWeight="Bold" Foreground="Red"/>
+                </StackPanel>
+            </Border>
+        </Grid>
         <Grid Margin="15,0,10,0" Grid.Row="1" Grid.ColumnSpan="4"  MinHeight="10">
         </Grid>
         <Grid Margin="15,0,10,0" Grid.Row="1" Grid.ColumnSpan="4"  MinHeight="25">
@@ -237,7 +237,7 @@ ToolTip="Only show a maximum of this amount of sessions" Background="White" Vert
                 </StackPanel>
             </Border>
             <Border Grid.Column="4" Background="Black" CornerRadius="4" Padding="5" Margin="15,0,5,0">
-            <StackPanel>
+                <StackPanel>
                     <TextBlock Text="Version" FontSize="11" Foreground="White"/>
                     <TextBlock x:Name="VersionText" Text="--" FontSize="18" FontWeight="Bold" Foreground="White"/>
                 </StackPanel>
@@ -285,44 +285,44 @@ var sa = r["SA"];
 var lvl = r["Level"];
                     
                     -->
-            
+
         </Grid>
 
-            <Grid Grid.Row="2" Margin="15,0,15,0" Grid.ColumnSpan="4"  MinHeight="25">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"></ColumnDefinition>
-                    <ColumnDefinition Width="*"></ColumnDefinition>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                    <RowDefinition MinHeight="25" Height="*"></RowDefinition>
-                </Grid.RowDefinitions>
-                
-                <!-- Active Sessions Table -->
-                <Border Grid.Row="1" Grid.Column="1"  CornerRadius="4" Padding="15" Margin="0,-0,0,0" Grid.RowSpan="5">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+        <Grid Grid.Row="2" Margin="15,0,15,0" Grid.ColumnSpan="4"  MinHeight="25">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+                <RowDefinition MinHeight="25" Height="*"></RowDefinition>
+            </Grid.RowDefinitions>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Background="White">
-                            <TextBlock Text="Active Sessions" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="SessionCountText" Text=" (0)" FontSize="16" Foreground="#666"/>
+            <!-- Active Sessions Table -->
+            <Border Grid.Row="1" Grid.Column="1"  CornerRadius="4" Padding="15" Margin="0,-0,0,0" Grid.RowSpan="5">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                        </StackPanel>
-                        <!-- CheckBox to show/hide sleeping SPIDs -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Background="White">
+                        <TextBlock Text="Active Sessions" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="SessionCountText" Text=" (0)" FontSize="16" Foreground="#666"/>
+
+                    </StackPanel>
+                    <!-- CheckBox to show/hide sleeping SPIDs -->
 
 
-                        <DataGrid x:Name="SessionsGrid" Grid.Row="1" 
+                    <DataGrid x:Name="SessionsGrid" Grid.Row="1" 
   AutoGenerateColumns="False" 
   IsReadOnly="True"
   HeadersVisibility="Column"
@@ -335,17 +335,17 @@ var lvl = r["Level"];
   EnableColumnVirtualization="True"
   VirtualizingStackPanel.IsVirtualizing="True"
   VirtualizingStackPanel.VirtualizationMode="Recycling">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="SPID" Binding="{Binding Spid}" Width="50"/>
-                                <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="60"/>
-                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="60"/>
-                                <DataGridTextColumn Header="CPU" Binding="{Binding Cpu}" Width="50"/>
-                                <DataGridTextColumn Header="I/O" Binding="{Binding PhysicalIo, StringFormat=N0}" Width="60"/>
-                                <DataGridTextColumn Header="Program" Binding="{Binding ProgramName}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Grid>
-                </Border>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="SPID" Binding="{Binding Spid}" Width="50"/>
+                            <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="60"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="60"/>
+                            <DataGridTextColumn Header="CPU" Binding="{Binding Cpu}" Width="50"/>
+                            <DataGridTextColumn Header="I/O" Binding="{Binding PhysicalIo, StringFormat=N0}" Width="60"/>
+                            <DataGridTextColumn Header="Program" Binding="{Binding ProgramName}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
 
             <Border Grid.Row="6" Grid.Column="1" Background="White" CornerRadius="4" Padding="15" Margin="0,0,0,10" Grid.RowSpan="2">
                 <Grid>
@@ -393,101 +393,101 @@ var lvl = r["Level"];
             </Border>
 
             <!-- Left: Wait Stats + Rolling Graph -->
-                <!-- Rolling Graph with Y-Axis -->
-                <Border  Grid.Row="1" Grid.Column="0" CornerRadius="4" Padding="15" Margin="0,0,0,0" Grid.RowSpan="1"  Background="White" >
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="45"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+            <!-- Rolling Graph with Y-Axis -->
+            <Border  Grid.Row="1" Grid.Column="0" CornerRadius="4" Padding="10" Margin="0,0,0,0" Grid.RowSpan="1"  Background="White" >
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="180"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.ColumnSpan="4" Text="Wait Stats History - ms (120 samples)" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Wait Stats History (ms) - Last 120 Samples" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
-                        <!-- Y-Axis Labels -->
-                        <Canvas x:Name="YAxisCanvas" Grid.Row="1" Grid.Column="0" Background="Transparent"  />
+                    <!-- Y-Axis Labels -->
+                    <Canvas x:Name="YAxisCanvas" Grid.Row="1" Grid.Column="0" Background="Transparent" Width="50"/>
 
-                        <!-- Graph Area -->
-                        <Canvas x:Name="WaitGraphCanvas" Grid.Row="1" Grid.Column="1" Background="#FAFAFA" ClipToBounds="True" Grid.ColumnSpan="3" Height="200" />
+                    <!-- Graph Area with Border -->
+                    <Border Grid.Row="1" Grid.Column="1" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="2" Background="#FAFAFA">
+                        <Canvas x:Name="WaitGraphCanvas" ClipToBounds="True" Margin="1"/>
+                    </Border>
 
-                    </Grid>
-                </Border>
-                <Border  Grid.Row="2" Grid.Column="0" CornerRadius="4" Padding="0" Margin="0,0,0,0" Grid.RowSpan="1" Background="White">
+                </Grid>
+            </Border>
+            <Border  Grid.Row="2" Grid.Column="0" CornerRadius="4" Padding="5" Margin="0,0,0,0" Grid.RowSpan="1" Background="White">
 
-                    <Grid>
-                        <!-- Legend -->
-                        <WrapPanel x:Name="LegendPanel" Orientation="Horizontal"/>
-                    </Grid>
-                </Border>
-                <Border  Grid.Row="3" Grid.Column="0" CornerRadius="4" Padding="0" Margin="0,0,0,0" Grid.RowSpan="1" Background="White">
+                <Grid>
+                    <!-- Legend -->
+                    <WrapPanel x:Name="LegendPanel" Orientation="Horizontal"/>
+                </Grid>
+            </Border>
+            <Border  Grid.Row="3" Grid.Column="0" CornerRadius="4" Padding="5" Margin="0,0,0,0" Grid.RowSpan="1" Background="White">
 
-                    <Grid>
-                        <!-- Explain Roison Waits -->
-                        <TextBlock FontSize="8" FontWeight="SemiBold"><Run Text="Poison Waits include: IO_QUEUE_LIMIT, IO_RETRY, LOG_RATE_GOVERNOR, POOL_LOG_RATE_GOVERNOR, PREEMPTIVE_DEBUG, RESMGR_THROTTLED"/><LineBreak/><Run Text=", RESOURCE_SEMAPHORE, RESOURCE_SEMAPHORE_QUERY_COMPILE, SE_REPL_CATCHUP_THROTTLE, SE_REPL_COMMIT_ACK, SE_REPL_COMMIT_TURN"/><LineBreak/><Run Text=", SE_REPL_ROLLBACK_ACK, SE_REPL_SLOW_SECONDARY_THROTTLE, THREADPOOL"/><LineBreak/><Run Text="Poison Wait Detected: Serializable Locking looks at: LCK_M_RS_S, LCK_M_RS_U, LCK_M_RIn_NL,LCK_M_RIn_S, LCK_M_RIn_U,LCK_M_RIn_X"/><LineBreak/><Run Text=", LCK_M_RX_S, LCK_M_RX_U,LCK_M_RX_X"/><LineBreak/><Run Text="Poison Wait Detected: CMEMTHREAD and NUMA looks at: CMEMTHREAD"/><LineBreak/><Run/></TextBlock>
-                    </Grid>
-                </Border>
+                <Grid>
+                    <!-- Explain Poison Waits -->
+                    <TextBlock FontSize="8" FontWeight="SemiBold" Foreground="#666666"><Run Text="Poison Waits: IO_QUEUE_LIMIT, IO_RETRY, LOG_RATE_GOVERNOR, POOL_LOG_RATE_GOVERNOR, RESMGR_THROTTLED, RESOURCE_SEMAPHORE, THREADPOOL"/><LineBreak/><Run Text="Serializable Locking: LCK_M_RS_S/U, LCK_M_RIn_NL/S/U/X, LCK_M_RX_S/U/X  |  CMEMTHREAD: CMEMTHREAD"/></TextBlock>
+                </Grid>
+            </Border>
 
 
-                <!-- SPID Boxes with Values -->
-                <Border Grid.Row="4" Grid.Column="0" Background="White" CornerRadius="4" Padding="0" Margin="0,0,0,0" Grid.RowSpan="1" >
-                    <Grid>
+            <!-- SPID Boxes with Values -->
+            <Border Grid.Row="4" Grid.Column="0" Background="White" CornerRadius="4" Padding="0" Margin="0,0,0,0" Grid.RowSpan="1" >
+                <Grid>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5" Grid.ColumnSpan="2" Height="20">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5" Grid.ColumnSpan="2" Height="20">
                         <TextBlock Text="Session Activity" FontSize="14" FontWeight="SemiBold"/>
                     </StackPanel>
-                    </Grid>
-                </Border>
-                <Border Grid.Row="5" Grid.Column="0" Background="White" CornerRadius="4" Padding="0" Margin="0,0,0,0" Grid.RowSpan="1" Height="25" >
-                    <Grid>
-                        <!-- Legend -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Grid.ColumnSpan="2">
-                            <TextBlock Text="CPU%" FontSize="11" Foreground="#0078D4" FontWeight="SemiBold" Margin="0,0,10,0"/>
-                            <TextBlock Text="I/O%" FontSize="11" Foreground="#D83B01" FontWeight="SemiBold" Margin="0,0,15,0"/>
-                            <Rectangle Width="12" Height="12" Stroke="Red" StrokeThickness="2" Fill="Transparent" Margin="0,0,5,0"/>
-                            <TextBlock Text="Blocker" FontSize="11" Foreground="#666" Margin="0,0,15,0"/>
-                            <Line X1="0" Y1="6" X2="20" Y2="6" Stroke="Red" StrokeThickness="2" StrokeDashArray="2,2" Margin="0,0,5,0"/>
-                            <TextBlock Text="Blocked" FontSize="11" Foreground="#666"/>
-                        </StackPanel>
-                        <TextBlock x:Name="FilteredCountText" Text="" FontSize="10" Foreground="#888" Margin="0,0,0,5" Grid.ColumnSpan="2"/>
-                    </Grid>
-                </Border>
-                <Border Grid.Row="6" Grid.Column="0"  CornerRadius="4" Padding="15" Margin="0,0,0,0" Grid.RowSpan="1" Background="White">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2" Height="250">
-                        <Canvas x:Name="SpidBoxesCanvas"/>
-                    </ScrollViewer>
-                </Border>
+                </Grid>
+            </Border>
+            <Border Grid.Row="5" Grid.Column="0" Background="White" CornerRadius="4" Padding="0" Margin="0,0,0,0" Grid.RowSpan="1" Height="25" >
+                <Grid>
+                    <!-- Legend -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Grid.ColumnSpan="2">
+                        <TextBlock Text="CPU%" FontSize="11" Foreground="#0078D4" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                        <TextBlock Text="I/O%" FontSize="11" Foreground="#D83B01" FontWeight="SemiBold" Margin="0,0,15,0"/>
+                        <Rectangle Width="12" Height="12" Stroke="Red" StrokeThickness="2" Fill="Transparent" Margin="0,0,5,0"/>
+                        <TextBlock Text="Blocker" FontSize="11" Foreground="#666" Margin="0,0,15,0"/>
+                        <Line X1="0" Y1="6" X2="20" Y2="6" Stroke="Red" StrokeThickness="2" StrokeDashArray="2,2" Margin="0,0,5,0"/>
+                        <TextBlock Text="Blocked" FontSize="11" Foreground="#666"/>
+                    </StackPanel>
+                    <TextBlock x:Name="FilteredCountText" Text="" FontSize="10" Foreground="#888" Margin="0,0,0,5" Grid.ColumnSpan="2"/>
+                </Grid>
+            </Border>
+            <Border Grid.Row="6" Grid.Column="0"  CornerRadius="4" Padding="15" Margin="0,0,0,0" Grid.RowSpan="1" Background="White">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2" Height="250">
+                    <Canvas x:Name="SpidBoxesCanvas"/>
+                </ScrollViewer>
+            </Border>
 
 
-                <!-- Blocking Chain Section - Full Width -->
-                <Border Grid.Row="7" Background="White" CornerRadius="4" Padding="15" Margin="0,16,15,10" Grid.ColumnSpan="2" >
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+            <!-- Blocking Chain Section - Full Width -->
+            <Border Grid.Row="7" Background="White" CornerRadius="4" Padding="15" Margin="0,16,15,10" Grid.ColumnSpan="2" >
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <TextBlock Text="Blocking Chains" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="BlockingCountText" Text=" (0)" FontSize="16" Foreground="#666"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Blocking Chains" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="BlockingCountText" Text=" (0)" FontSize="16" Foreground="#666"/>
 
-                            <Border Background="#FFDDDD" CornerRadius="3" Padding="5,2" Margin="15,0,0,0" x:Name="BlockingAlert" Visibility="Collapsed">
-                                <TextBlock Text="⚠ Active Blocking Detected" FontSize="11" Foreground="#CC0000" FontWeight="SemiBold"/>
-                            </Border>
-                            <Button x:Name="ViewQueryButton" Content="📋 View Blocking Query" 
+                        <Border Background="#FFDDDD" CornerRadius="3" Padding="5,2" Margin="15,0,0,0" x:Name="BlockingAlert" Visibility="Collapsed">
+                            <TextBlock Text="⚠ Active Blocking Detected" FontSize="11" Foreground="#CC0000" FontWeight="SemiBold"/>
+                        </Border>
+                        <Button x:Name="ViewQueryButton" Content="📋 View Blocking Query" 
 Click="ViewBlockingQueryButton_Click"
 Padding="8,4" Margin="20,0,5,0"
 Background="#0078D4" Foreground="White" BorderThickness="0"
 FontSize="11" Cursor="Hand"
 ToolTip="View the full query text in a copyable window"/>
 
-                        </StackPanel>
+                    </StackPanel>
 
-                        <DataGrid x:Name="BlockingGrid" Grid.Row="1" 
+                    <DataGrid x:Name="BlockingGrid" Grid.Row="1" 
                   AutoGenerateColumns="False" 
                   IsReadOnly="True"
                   HeadersVisibility="Column"
@@ -499,47 +499,47 @@ ToolTip="View the full query text in a copyable window"/>
                 EnableRowVirtualization="True"
                 VirtualizingStackPanel.IsVirtualizing="True"
                 VirtualizingStackPanel.VirtualizationMode="Recycling">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Lock Type" Binding="{Binding LockType}" Width="80"/>
-                                <DataGridTextColumn Header="Database" Binding="{Binding DatabaseName}" Width="90"/>
-                                <DataGridTextColumn Header="Wait SPID" Binding="{Binding WaitSpid}" Width="70"/>
-                                <DataGridTextColumn Header="Blocker SPID" Binding="{Binding BlockerSpid}" Width="85"/>
-                                <DataGridTextColumn Header="Wait (ms)" Binding="{Binding WaitDurationMs, StringFormat=N0}" Width="80"/>
-                                <DataGridTextColumn Header="Wait Type" Binding="{Binding WaitType}" Width="100"/>
-                                <DataGridTextColumn Header="Query" Binding="{Binding WaitStatement}" Width="*"/>
-                                <DataGridTextColumn Header="Blocked by" Binding="{Binding BlockerStatement}" Width="*"/>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Lock Type" Binding="{Binding LockType}" Width="80"/>
+                            <DataGridTextColumn Header="Database" Binding="{Binding DatabaseName}" Width="90"/>
+                            <DataGridTextColumn Header="Wait SPID" Binding="{Binding WaitSpid}" Width="70"/>
+                            <DataGridTextColumn Header="Blocker SPID" Binding="{Binding BlockerSpid}" Width="85"/>
+                            <DataGridTextColumn Header="Wait (ms)" Binding="{Binding WaitDurationMs, StringFormat=N0}" Width="80"/>
+                            <DataGridTextColumn Header="Wait Type" Binding="{Binding WaitType}" Width="100"/>
+                            <DataGridTextColumn Header="Query" Binding="{Binding WaitStatement}" Width="*"/>
+                            <DataGridTextColumn Header="Blocked by" Binding="{Binding BlockerStatement}" Width="*"/>
 
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Grid>
-                </Border>
-                <!-- Top Usage Queries Section - Full Width -->
-                <Border Grid.Row="8" CornerRadius="4"  Padding="15" Margin="0,0,15,6"  Grid.ColumnSpan="2" Background="White">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="200"/>
-                            <ColumnDefinition Width="50"/>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+            <!-- Top Usage Queries Section - Full Width -->
+            <Border Grid.Row="8" CornerRadius="4"  Padding="15" Margin="0,0,15,6"  Grid.ColumnSpan="2" Background="White">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                    
-                          <TextBlock Text="Top Usage Queries" FontSize="16" FontWeight="SemiBold" Grid.Row="0" Grid.Column="0"/>
-                        <TextBlock x:Name="TopQueriesCountText" Width="50"  Grid.Row="0" Grid.Column="1" Text=" (refreshes every 30 ticks)" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        <Button x:Name="ViewTopQueryButton" Content="📋 View Query" Grid.Row="0" Grid.Column="2"
+
+                    <TextBlock Text="Top Usage Queries" FontSize="16" FontWeight="SemiBold" Grid.Row="0" Grid.Column="0"/>
+                    <TextBlock x:Name="TopQueriesCountText" Width="50"  Grid.Row="0" Grid.Column="1" Text=" (refreshes every 30 ticks)" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <Button x:Name="ViewTopQueryButton" Content="📋 View Query" Grid.Row="0" Grid.Column="2"
                     Click="ViewQueryButton_Click"
                                     Width="100"
                     Padding="8,4" Margin="20,0,5,0"
                     Background="#0078D4" Foreground="White" BorderThickness="0"
                     FontSize="11" Cursor="Hand"
                     ToolTip="View the full query text in a copyable window"/>
-                     
 
-                        <DataGrid x:Name="TopQueriesGrid" Grid.Row="1" 
+
+                    <DataGrid x:Name="TopQueriesGrid" Grid.Row="1" 
                   AutoGenerateColumns="False" 
                   IsReadOnly="True"
                   HeadersVisibility="Column"
@@ -554,40 +554,40 @@ ToolTip="View the full query text in a copyable window"/>
                   EnableColumnVirtualization="True"
                   VirtualizingStackPanel.IsVirtualizing="True"
                   VirtualizingStackPanel.VirtualizationMode="Recycling">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="80"/>
-                                <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="90"/>
-                                <DataGridTextColumn Header="Elapsed (s)" Binding="{Binding TotalElapsedTimeS, StringFormat=N2}" Width="75"/>
-                                <DataGridTextColumn Header="Exec Count" Binding="{Binding ExecutionCount, StringFormat=N0}" Width="75"/>
-                                <DataGridTextColumn Header="CPU (s)" Binding="{Binding TotalCpuTimeS, StringFormat=N2}" Width="65"/>
-                                <DataGridTextColumn Header="Logical Reads" Binding="{Binding TotalLogicalReads, StringFormat=N0}" Width="90"/>
-                                <DataGridTextColumn Header="Logical Writes" Binding="{Binding TotalLogicalWrites, StringFormat=N0}" Width="90"/>
-                                <DataGridTextColumn Header="Query" Binding="{Binding QueryText}" Width="*">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                            <Setter Property="ToolTip" Value="{Binding QueryText}"/>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Grid>
-                </Border>
-                
-
-            </Grid>
-
-
-            <!-- Status Bar -->
-            <Border Grid.Row="14" Background="#E0E0E0" Padding="10,5" Grid.ColumnSpan="4" Margin="0,0,0,0">
-                <Grid>
-                    <TextBlock x:Name="StatusText" Text="Select a server to begin monitoring" FontSize="11"/>
-                    <TextBlock x:Name="LastUpdateText" Text="" FontSize="11" HorizontalAlignment="Right"/>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="80"/>
+                            <DataGridTextColumn Header="Database" Binding="{Binding Database}" Width="90"/>
+                            <DataGridTextColumn Header="Elapsed (s)" Binding="{Binding TotalElapsedTimeS, StringFormat=N2}" Width="75"/>
+                            <DataGridTextColumn Header="Exec Count" Binding="{Binding ExecutionCount, StringFormat=N0}" Width="75"/>
+                            <DataGridTextColumn Header="CPU (s)" Binding="{Binding TotalCpuTimeS, StringFormat=N2}" Width="65"/>
+                            <DataGridTextColumn Header="Logical Reads" Binding="{Binding TotalLogicalReads, StringFormat=N0}" Width="90"/>
+                            <DataGridTextColumn Header="Logical Writes" Binding="{Binding TotalLogicalWrites, StringFormat=N0}" Width="90"/>
+                            <DataGridTextColumn Header="Query" Binding="{Binding QueryText}" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                        <Setter Property="ToolTip" Value="{Binding QueryText}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
             </Border>
+
+
         </Grid>
-        <!--  </ScrollViewer> -->
-   
+
+
+        <!-- Status Bar -->
+        <Border Grid.Row="14" Background="#E0E0E0" Padding="10,5" Grid.ColumnSpan="4" Margin="0,0,0,0">
+            <Grid>
+                <TextBlock x:Name="StatusText" Text="Select a server to begin monitoring" FontSize="11"/>
+                <TextBlock x:Name="LastUpdateText" Text="" FontSize="11" HorizontalAlignment="Right"/>
+            </Grid>
+        </Border>
+    </Grid>
+    <!--  </ScrollViewer> -->
+
 </Window>
 

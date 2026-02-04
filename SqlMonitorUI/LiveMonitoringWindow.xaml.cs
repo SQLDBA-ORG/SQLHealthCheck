@@ -234,17 +234,17 @@ namespace SqlMonitorUI
             // Refresh the combo box
             ServerCombo.Items.Refresh();
 
-            // Auto-select first connectable server
+            // Auto-select first connectable server (this will trigger ServerCombo_SelectionChanged which auto-starts monitoring)
             var firstConnectable = serverItems.FirstOrDefault(s => s.IsConnectable);
             if (firstConnectable != null)
             {
                 ServerCombo.SelectedItem = firstConnectable;
+                // Monitoring starts automatically via ServerCombo_SelectionChanged
             }
             else
             {
                 StatusText.Text = "No servers available. Check connections.";
             }
-            StopMonitoring();
         }
 
         private async System.Threading.Tasks.Task<bool> TestConnectionAsync(string connectionString)
@@ -417,16 +417,25 @@ namespace SqlMonitorUI
             try
             {
                 _tickCount++;
-                var shouldRefreshTopQueries = _tickCount % _config.TopQueriesRefreshInterval == 0 || _tickCount == 1;
-                var shouldRefreshServerDetails = _tickCount % _config.ServerDetailsRefreshInterval == 0 || _tickCount == 1;
-                var shouldRefreshDriveLatency = _tickCount % _config.DriveLatencyRefreshInterval == 0 || _tickCount == 1;
+                var shouldRefreshTopQueries = _config.Queries.TopQueries.Enabled &&
+                    (_tickCount == 1 || _tickCount % _config.TopQueriesRefreshInterval == 0);
+                var shouldRefreshServerDetails = _config.Queries.ServerDetails.Enabled &&
+                    (_tickCount == 1 || _tickCount % _config.ServerDetailsRefreshInterval == 0);
+                var shouldRefreshDriveLatency = _config.Queries.DriveLatency.Enabled &&
+                    (_tickCount == 1 || _tickCount % _config.DriveLatencyRefreshInterval == 0);
 
                 var connStr = GetOptimizedConnectionString();
 
                 // Run all queries in parallel
-                var metricsTask = Task.Run(() => GetMetricsOptimized(connStr));
-                var sessionsTask = Task.Run(() => GetSessionsOptimized(connStr));
-                var blockingTask = Task.Run(() => GetBlockingInfoOptimized(connStr));
+                var metricsTask = _config.Queries.Metrics.Enabled
+                    ? Task.Run(() => GetMetricsOptimized(connStr))
+                    : Task.FromResult(new List<MetricsItem>());
+                var sessionsTask = _config.Queries.Sessions.Enabled
+                    ? Task.Run(() => GetSessionsOptimized(connStr))
+                    : Task.FromResult(new List<SessionItem>());
+                var blockingTask = _config.Queries.Blocking.Enabled
+                    ? Task.Run(() => GetBlockingInfoOptimized(connStr))
+                    : Task.FromResult(new List<BlockingInfo>());
 
                 Task<List<TopQueryItem>>? topQueriesTask = shouldRefreshTopQueries
                     ? Task.Run(() => GetTopQueriesOptimized(connStr))
@@ -596,7 +605,7 @@ namespace SqlMonitorUI
         {
             // Use query from config with placeholders replaced
             var q = _config.GetSessionsSql(
-                _config.Queries.Sessions.TopN,
+                TopSessions,
                 ShowSleepingSPIDs,
                 _programFilter);
 
@@ -690,22 +699,25 @@ namespace SqlMonitorUI
                         ServerName = reader["ServerName"]?.ToString() ?? "",
                         Edition = reader["Edition"]?.ToString() ?? "",
                         Sockets = reader["Sockets"] != DBNull.Value ? Convert.ToInt32(reader["Sockets"]) : 0,
-                        VirtualCPUs = reader["Virtual CPUs"] != DBNull.Value ? Convert.ToInt32(reader["Virtual CPUs"]) : 0,
-                        VMType = reader["VM Type"]?.ToString() ?? "",
+                        VirtualCPUs = reader["VirtualCPUs"] != DBNull.Value ? Convert.ToInt32(reader["VirtualCPUs"]) : 0,
+                        VMType = reader["VMType"]?.ToString() ?? "",
                         MemoryGB = reader["MemoryGB"] != DBNull.Value ? Convert.ToDouble(reader["MemoryGB"]) : 0,
-                        SqlAllocated = reader["SQL Allocated"] != DBNull.Value ? Convert.ToDouble(reader["SQL Allocated"]) : 0,
-                        UsedBySql = reader["Used by SQL"] != DBNull.Value ? Convert.ToDouble(reader["SQL Allocated"]) : 0,
-                        MemoryState = "",
-                        Version = reader["Version"]?.ToString().Split(' ')[0] ?? "",
+                        SqlAllocated = reader["SqlAllocated"] != DBNull.Value ? Convert.ToDouble(reader["SqlAllocated"]) : 0,
+                        UsedBySql = reader["UsedBySql"] != DBNull.Value ? Convert.ToDouble(reader["UsedBySql"]) : 0,
+                        MemoryState = reader["MemoryState"]?.ToString() ?? "",
+                        Version = reader["Version"]?.ToString()?.Split('\n')[0]?.Trim() ?? "",
                         BuildNr = reader["BuildNr"]?.ToString() ?? "",
                         OS = reader["OS"]?.ToString() ?? "",
-                        HADR = reader["HADR"] != DBNull.Value ? Convert.ToInt32(reader["HADR"]) : 0,
-                        SA = 0,
+                        HADR = reader["HADR"]?.ToString() == "Yes" ? 1 : 0,
+                        SA = reader["SA"]?.ToString() == "Enabled" ? 1 : 0,
                         Level = reader["Level"]?.ToString() ?? ""
                     });
                 }
             }
-            catch { /* Ignore query errors */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ServerDetails query error: {ex.Message}");
+            }
             return results;
         }
 
@@ -1044,21 +1056,27 @@ namespace SqlMonitorUI
             maxVal = maxVal * 1.1; // Add 10% headroom
 
             var xStep = w / (MaxHistoryPoints - 1);
-            var yPadding = 5.0;
+            var yPadding = 10.0;
             var graphHeight = h - yPadding * 2;
 
             // Draw Y-axis labels and grid lines
             DrawYAxis(maxVal, h, w);
 
-            // Draw data lines
+            // Draw data lines with anti-aliasing
             foreach (var kv in _waitHistory.Where(x => x.Value.Any(v => v > 0)))
             {
                 var pts = kv.Value.ToArray();
                 var off = MaxHistoryPoints - pts.Length;
-                var pl = new Polyline { Stroke = GetCachedBrush(_waitColors[kv.Key]), StrokeThickness = 1.5 };
+                var pl = new Polyline
+                {
+                    Stroke = GetCachedBrush(_waitColors[kv.Key]),
+                    StrokeThickness = 2,
+                    StrokeLineJoin = PenLineJoin.Round
+                };
                 for (int i = 0; i < pts.Length; i++)
                 {
                     var yVal = h - yPadding - ((double)pts[i] / maxVal * graphHeight);
+                    yVal = Math.Max(yPadding, Math.Min(h - yPadding, yVal)); // Clamp to graph area
                     pl.Points.Add(new System.Windows.Point((off + i) * xStep, yVal));
                 }
                 WaitGraphCanvas.Children.Add(pl);
@@ -1068,8 +1086,10 @@ namespace SqlMonitorUI
         private void DrawYAxis(double maxVal, double canvasHeight, double graphWidth)
         {
             var yAxisWidth = YAxisCanvas.ActualWidth > 0 ? YAxisCanvas.ActualWidth : 50;
-            var yPadding = 5.0;
+            var yPadding = 10.0;
             var graphHeight = canvasHeight - yPadding * 2;
+
+            if (graphHeight <= 0) return;
 
             // Determine nice tick values
             var tickCount = 5;
@@ -1098,11 +1118,13 @@ namespace SqlMonitorUI
                 if (value > maxVal * 1.05) break;
 
                 var yPos = canvasHeight - yPadding - (value / maxVal * graphHeight);
+                if (yPos < 0 || yPos > canvasHeight) continue;
 
                 // Y-axis label - format based on magnitude
                 string labelText;
-                if (value >= 1000000) labelText = (value / 1000000).ToString("F1") + "M";
-                else if (value >= 1000) labelText = (value / 1000).ToString("F1") + "K";
+                if (value >= 1000000000) labelText = (value / 1000000000).ToString("F1") + "B";
+                else if (value >= 1000000) labelText = (value / 1000000).ToString("F1") + "M";
+                else if (value >= 1000) labelText = (value / 1000).ToString("F0") + "K";
                 else labelText = value.ToString("F0");
 
                 var label = new TextBlock
@@ -1111,24 +1133,41 @@ namespace SqlMonitorUI
                     FontSize = 9,
                     Foreground = System.Windows.Media.Brushes.Gray,
                     TextAlignment = TextAlignment.Right,
-                    Width = yAxisWidth - 5
+                    Width = yAxisWidth - 8
                 };
-                Canvas.SetRight(label, 2);
+                Canvas.SetLeft(label, 0);
                 Canvas.SetTop(label, yPos - 7);
                 YAxisCanvas.Children.Add(label);
 
-                // Grid line on main canvas
-                var gridLine = new Line
+                // Grid line on main canvas - dashed for non-zero values
+                if (i > 0)
                 {
-                    X1 = 0,
-                    Y1 = yPos,
-                    X2 = graphWidth,
-                    Y2 = yPos,
-                    Stroke = System.Windows.Media.Brushes.LightGray,
-                    StrokeThickness = 0.5,
-                    StrokeDashArray = new DoubleCollection { 2, 2 }
-                };
-                WaitGraphCanvas.Children.Add(gridLine);
+                    var gridLine = new Line
+                    {
+                        X1 = 0,
+                        Y1 = yPos,
+                        X2 = graphWidth,
+                        Y2 = yPos,
+                        Stroke = System.Windows.Media.Brushes.LightGray,
+                        StrokeThickness = 0.5,
+                        StrokeDashArray = new DoubleCollection { 4, 4 }
+                    };
+                    WaitGraphCanvas.Children.Add(gridLine);
+                }
+                else
+                {
+                    // Solid baseline at 0
+                    var baseLine = new Line
+                    {
+                        X1 = 0,
+                        Y1 = yPos,
+                        X2 = graphWidth,
+                        Y2 = yPos,
+                        Stroke = System.Windows.Media.Brushes.DarkGray,
+                        StrokeThickness = 1
+                    };
+                    WaitGraphCanvas.Children.Add(baseLine);
+                }
             }
         }
 
@@ -1157,7 +1196,7 @@ namespace SqlMonitorUI
             var maxValD = maxVal * 1.1;
 
             var xStep = w / (MaxHistoryPoints - 1);
-            var yPadding = 5.0;
+            var yPadding = 10.0;
             var graphHeight = h - yPadding * 2;
 
             // Update or create polylines (reuse existing ones)
@@ -1168,7 +1207,8 @@ namespace SqlMonitorUI
                     pl = new Polyline
                     {
                         Stroke = GetCachedBrush(_waitColors[kv.Key]),
-                        StrokeThickness = 1.5
+                        StrokeThickness = 2,
+                        StrokeLineJoin = PenLineJoin.Round
                     };
                     _graphPolylines[kv.Key] = pl;
                     WaitGraphCanvas.Children.Add(pl);
@@ -1183,6 +1223,7 @@ namespace SqlMonitorUI
                     for (int i = 0; i < pts.Length; i++)
                     {
                         var yVal = h - yPadding - ((double)pts[i] / maxValD * graphHeight);
+                        yVal = Math.Max(yPadding, Math.Min(h - yPadding, yVal)); // Clamp to graph area
                         pl.Points.Add(new System.Windows.Point((off + i) * xStep, yVal));
                     }
                     pl.Visibility = Visibility.Visible;
@@ -1197,6 +1238,12 @@ namespace SqlMonitorUI
             if (_tickCount % 5 == 0)
             {
                 YAxisCanvas.Children.Clear();
+                // Clear old grid lines first
+                var toRemove = WaitGraphCanvas.Children.OfType<Line>().ToList();
+                foreach (var line in toRemove)
+                {
+                    WaitGraphCanvas.Children.Remove(line);
+                }
                 DrawYAxis(maxValD, h, w);
             }
         }
@@ -1442,6 +1489,22 @@ namespace SqlMonitorUI
                     ioText.Text = $"I/O: {sp.IoHistory.LastOrDefault():F1}%";
                 }
             }
+
+            // Update tooltip with current data
+            var tooltipText = BuildSpidTooltip(sp, isBlocker, isWaiting);
+            brd.ToolTip = new System.Windows.Controls.ToolTip
+            {
+                Content = new TextBlock
+                {
+                    Text = tooltipText,
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                    FontSize = 11
+                },
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 48)),
+                Foreground = System.Windows.Media.Brushes.White,
+                Padding = new Thickness(10),
+                BorderThickness = new Thickness(0)
+            };
         }
 
         private Border CreateSpidBoxOptimized(SpidHistory sp, bool isBlocker, bool isWaiting, double fixedWidth)
@@ -1505,6 +1568,23 @@ namespace SqlMonitorUI
             g.Children.Add(ioText);
 
             brd.Child = g;
+
+            // Add tooltip with detailed SPID information
+            var tooltipText = BuildSpidTooltip(sp, isBlocker, isWaiting);
+            brd.ToolTip = new System.Windows.Controls.ToolTip
+            {
+                Content = new TextBlock
+                {
+                    Text = tooltipText,
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                    FontSize = 11
+                },
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 48)),
+                Foreground = System.Windows.Media.Brushes.White,
+                Padding = new Thickness(10),
+                BorderThickness = new Thickness(0)
+            };
+
             return brd;
         }
 
